@@ -47,10 +47,21 @@ interface AgentStatus {
   task?: string;
 }
 
+interface TaskData {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: number;
+  assignedTo?: string;
+  createdAt: string;
+}
+
 interface StatusData {
   agents: AgentStatus[];
-  activePlan: string;
+  activePlan: string | null;
   repoName: string;
+  tasks?: { open: number; inProgress: number; completed: number; total: number };
 }
 
 interface WorkspaceData {
@@ -453,9 +464,39 @@ function ContextPillsDisplay({ pills }: { pills: ContextPill[] }) {
   );
 }
 
+// --- Task List Overlay ---
+
+function TaskList({ tasks, onClose }: { tasks: TaskData[]; onClose: () => void }) {
+  return (
+    <div className="sheet-overlay" onClick={onClose}>
+      <div className="sheet" onClick={e => e.stopPropagation()} style={{ maxHeight: '70vh' }}>
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <span>Tasks</span>
+          <button onClick={onClose}>{'\u2715'}</button>
+        </div>
+        <div className="sheet-body">
+          {tasks.map((t: TaskData) => (
+            <div key={t.id} className="task-item">
+              <span className={`task-status task-status-${t.status}`}>
+                {t.status === 'completed' ? '\u2713' : t.status === 'in_progress' ? '\u25D0' : t.status === 'failed' ? '\u2717' : '\u25CB'}
+              </span>
+              <div className="task-info">
+                <strong>{t.title}</strong>
+                {t.assignedTo && <span className="task-assignee">{'\u2192'} {t.assignedTo}</span>}
+              </div>
+            </div>
+          ))}
+          {tasks.length === 0 && <div className="sheet-empty">No tasks yet. @mention the director to create one.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // --- Part 3: Working On Status Bar ---
 
-function StatusBar({ statusData }: { statusData: StatusData | null }) {
+function StatusBar({ statusData, onShowTasks }: { statusData: StatusData | null; onShowTasks: () => void }) {
   if (!statusData) return null;
 
   const busyAgents = statusData.agents.filter((a) => a.status !== 'idle');
@@ -467,10 +508,18 @@ function StatusBar({ statusData }: { statusData: StatusData | null }) {
         {statusData.repoName}
       </span>
       <span className="status-sep">|</span>
-      <span className="status-item">
+      <span className="status-item clickable" onClick={onShowTasks}>
         <span className="status-icon">{'\uD83D\uDCCB'}</span>
-        {statusData.activePlan}
+        {statusData.tasks?.total || 0} tasks
       </span>
+      {statusData.activePlan && (
+        <>
+          <span className="status-sep">|</span>
+          <span className="status-item">
+            {statusData.activePlan}
+          </span>
+        </>
+      )}
       {busyAgents.map((a) => (
         <span key={a.name}>
           <span className="status-sep">|</span>
@@ -796,6 +845,10 @@ export function App() {
   const [statusData, setStatusData] = useState<StatusData | null>(null);
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
 
+  // Task list overlay
+  const [showTasks, setShowTasks] = useState(false);
+  const [taskList, setTaskList] = useState<TaskData[]>([]);
+
   // Part 4: mention dropdown
   const [mentionDropdownVisible, setMentionDropdownVisible] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
@@ -828,6 +881,19 @@ export function App() {
       .then((data) => setWorkspace(data))
       .catch(() => {});
   }, []);
+
+  // Fetch tasks when overlay is opened
+  const fetchTasks = useCallback(() => {
+    fetch('/api/tasks')
+      .then((r) => r.json())
+      .then((data) => setTaskList(data))
+      .catch(() => {});
+  }, []);
+
+  const handleShowTasks = useCallback(() => {
+    fetchTasks();
+    setShowTasks(true);
+  }, [fetchTasks]);
 
   const handleOnboardingComplete = useCallback(() => {
     localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
@@ -993,7 +1059,7 @@ export function App() {
       <HintBar onInsertMention={insertMention} />
 
       {/* Part 3: Status bar */}
-      <StatusBar statusData={statusData} />
+      <StatusBar statusData={statusData} onShowTasks={handleShowTasks} />
 
       <nav className="tab-bar">
         <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
@@ -1071,6 +1137,13 @@ export function App() {
         <CommentSheet
           post={commentPost}
           onClose={() => setCommentPostId(null)}
+        />
+      )}
+
+      {showTasks && (
+        <TaskList
+          tasks={taskList}
+          onClose={() => setShowTasks(false)}
         />
       )}
     </div>

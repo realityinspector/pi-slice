@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@slice/core": "workspace:*",
-    "@slice/quarry": "workspace:*"
+    "@slice/quarry": "workspace:*",
+    "@slice/pi-bridge": "workspace:*"
   },
   "type": "module"
 }

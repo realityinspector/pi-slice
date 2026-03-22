@@ -4,6 +4,7 @@ import http from 'http';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import type { TaskQueue, TaskStatus } from '@slice/orchestrator';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +31,7 @@ export interface OnboardingState {
 export interface FeedServerOptions {
   onboardingState?: OnboardingState | null;
   provider?: { complete: (messages: any[], options?: any) => Promise<{ content: string; usage: any }> };
+  taskQueue?: TaskQueue;
 }
 
 const ONBOARDING_STEP_ORDER: OnboardingStep[] = [
@@ -90,25 +92,29 @@ export class FeedServer {
   private dmThreads: Map<string, DMThread> = new Map();
   private onboardingState: OnboardingState | null;
   private provider: FeedServerOptions['provider'];
+  private taskQueue: TaskQueue | null;
 
   constructor(private port: number, options?: FeedServerOptions) {
     this.onboardingState = options?.onboardingState ?? null;
     this.provider = options?.provider;
+    this.taskQueue = options?.taskQueue ?? null;
     this.app = express();
     this.app.use(express.json());
     this.app.use(express.static(path.join(__dirname, '../client/dist')));
 
+    const app = this.app;
+
     // --- API routes ---
 
-    this.app.get('/api/health', (_req, res) => {
+    app.get('/api/health', (_req, res) => {
       res.json({ status: 'ok', uptime: process.uptime() });
     });
 
-    this.app.get('/api/feed', (_req, res) => {
+    app.get('/api/feed', (_req, res) => {
       res.json(this.posts.slice().reverse());
     });
 
-    this.app.post('/api/feed', (req, res) => {
+    app.post('/api/feed', (req, res) => {
       const { content, agentId, agentName, agentRole } = req.body as {
         content?: string;
         agentId?: string;
@@ -119,16 +125,84 @@ export class FeedServer {
         res.status(400).json({ error: 'content is required' });
         return;
       }
+      const trimmed = content.trim();
       const post = this.addPost({
-        content: content.trim(),
+        content: trimmed,
         agentId,
         agentName: agentName || 'Anonymous',
         agentRole,
       });
+
+      // --- @mention detection ---
+      const mentionMatch = trimmed.match(/@(director|worker|steward|all)\s+(.+)/i);
+      if (mentionMatch && this.taskQueue) {
+        const targetRole = mentionMatch[1].toLowerCase();
+        const taskDescription = mentionMatch[2].trim();
+
+        if (targetRole === 'director') {
+          const task = this.taskQueue.createTask(
+            taskDescription.slice(0, 80),
+            taskDescription,
+            { priority: 2 },
+          );
+          setTimeout(() => {
+            this.addPost({
+              agentName: 'Director',
+              agentRole: 'director',
+              content: `Received: "${task.title}"\nTask #${task.id} created and queued for dispatch.`,
+            });
+            this.broadcast({ type: 'new-post', data: this.posts[this.posts.length - 1] });
+          }, 500);
+        }
+
+        if (targetRole === 'worker') {
+          const task = this.taskQueue.createTask(
+            taskDescription.slice(0, 80),
+            taskDescription,
+            { priority: 3 },
+          );
+          setTimeout(() => {
+            this.addPost({
+              agentName: 'Worker',
+              agentRole: 'worker',
+              content: `Acknowledged. Task #${task.id}: "${task.title}" added to my queue.`,
+            });
+            this.broadcast({ type: 'new-post', data: this.posts[this.posts.length - 1] });
+          }, 500);
+        }
+
+        if (targetRole === 'steward') {
+          const task = this.taskQueue.createTask(
+            taskDescription.slice(0, 80),
+            taskDescription,
+            { priority: 2 },
+          );
+          setTimeout(() => {
+            this.addPost({
+              agentName: 'Steward',
+              agentRole: 'steward',
+              content: `Review task queued: "${task.title}" (Task #${task.id}). Will inspect and report back.`,
+            });
+            this.broadcast({ type: 'new-post', data: this.posts[this.posts.length - 1] });
+          }, 500);
+        }
+
+        if (targetRole === 'all') {
+          setTimeout(() => {
+            this.addPost({
+              agentName: 'Director',
+              agentRole: 'director',
+              content: `Broadcast received. Triaging: "${taskDescription.slice(0, 100)}"`,
+            });
+            this.broadcast({ type: 'new-post', data: this.posts[this.posts.length - 1] });
+          }, 500);
+        }
+      }
+
       res.status(201).json(post);
     });
 
-    this.app.post('/api/feed/:id/like', (req, res) => {
+    app.post('/api/feed/:id/like', (req, res) => {
       const post = this.posts.find((p) => p.id === req.params.id);
       if (!post) {
         res.status(404).json({ error: 'post not found' });
@@ -139,18 +213,18 @@ export class FeedServer {
       res.json({ likes: post.likes });
     });
 
-    this.app.post('/api/feed/:id/comments', (req, res) => {
+    app.post('/api/feed/:id/comments', (req, res) => {
       const post = this.posts.find((p) => p.id === req.params.id);
       if (!post) {
         res.status(404).json({ error: 'post not found' });
         return;
       }
-      const { content, authorId, authorName } = req.body as {
+      const { content: commentContent, authorId, authorName } = req.body as {
         content?: string;
         authorId?: string;
         authorName?: string;
       };
-      if (!content || typeof content !== 'string' || !content.trim()) {
+      if (!commentContent || typeof commentContent !== 'string' || !commentContent.trim()) {
         res.status(400).json({ error: 'content is required' });
         return;
       }
@@ -158,7 +232,7 @@ export class FeedServer {
         id: crypto.randomUUID(),
         authorId: authorId || 'user',
         authorName: authorName || 'Anonymous',
-        content: content.trim(),
+        content: commentContent.trim(),
         timestamp: new Date().toISOString(),
       };
       post.comments.push(comment);
@@ -168,7 +242,7 @@ export class FeedServer {
 
     // --- Onboarding routes ---
 
-    this.app.get('/api/onboarding', (_req, res) => {
+    app.get('/api/onboarding', (_req, res) => {
       if (!this.onboardingState) {
         res.json({ active: false, state: null });
         return;
@@ -176,7 +250,7 @@ export class FeedServer {
       res.json({ active: true, state: this.onboardingState });
     });
 
-    this.app.post('/api/onboarding/advance', (_req, res) => {
+    app.post('/api/onboarding/advance', (_req, res) => {
       if (!this.onboardingState) {
         res.json({ active: false, state: null });
         return;
@@ -195,7 +269,7 @@ export class FeedServer {
       res.json({ active: true, state: this.onboardingState });
     });
 
-    this.app.post('/api/onboarding/skip', (_req, res) => {
+    app.post('/api/onboarding/skip', (_req, res) => {
       this.onboardingState = null;
       res.json({ active: false, state: null });
     });
@@ -241,21 +315,21 @@ export class FeedServer {
       return `I'll work on that. Creating tasks...`;
     };
 
-    this.app.get('/api/dm', (_req, res) => {
+    app.get('/api/dm', (_req, res) => {
       const threads = Array.from(this.dmThreads.values()).sort(
         (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
       );
       res.json(threads);
     });
 
-    this.app.get('/api/dm/:agentName', (req, res) => {
+    app.get('/api/dm/:agentName', (req, res) => {
       const thread = getOrCreateDM(req.params.agentName);
       res.json(thread);
     });
 
-    this.app.post('/api/dm/:agentName', async (req, res) => {
-      const { content } = req.body as { content?: string };
-      if (!content || typeof content !== 'string' || !content.trim()) {
+    app.post('/api/dm/:agentName', async (req, res) => {
+      const { content: dmContent } = req.body as { content?: string };
+      if (!dmContent || typeof dmContent !== 'string' || !dmContent.trim()) {
         res.status(400).json({ error: 'content is required' });
         return;
       }
@@ -266,7 +340,7 @@ export class FeedServer {
       const userMsg: DMMessage = {
         id: crypto.randomUUID(),
         role: 'user',
-        content: content.trim(),
+        content: dmContent.trim(),
         timestamp: now,
       };
       thread.messages.push(userMsg);
@@ -296,8 +370,27 @@ export class FeedServer {
         // Fall back to mock responses
         const isDirector = thread.agentRole === 'director';
         agentResponse = isDirector
-          ? generateDirectorResponse(content)
+          ? generateDirectorResponse(dmContent)
           : 'I received your message. (Agent responses coming in Phase 2)';
+      }
+
+      // --- Director AI Planning: parse response for task creation ---
+      const agentRole = KNOWN_AGENTS[agentName] || 'system';
+      if (agentRole === 'director' && this.taskQueue && agentResponse) {
+        const taskLines = agentResponse.match(/^\d+\.\s+\*?\*?(.+?)\*?\*?\s*[-\u2014:]/gm);
+        if (taskLines && taskLines.length >= 2) {
+          const titles = taskLines.map((line: string) =>
+            line.replace(/^\d+\.\s+\*?\*?/, '').replace(/\*?\*?\s*[-\u2014:].*$/, '').trim()
+          ).filter((t: string) => t.length > 5);
+
+          if (titles.length > 0) {
+            this.taskQueue.createPlan(
+              'Plan from Director DM',
+              titles,
+            );
+            agentResponse += `\n\n_Created plan with ${titles.length} tasks. The dispatch daemon will assign them to workers._`;
+          }
+        }
       }
 
       const agentTimestamp = new Date(Date.now() + 500).toISOString();
@@ -315,59 +408,183 @@ export class FeedServer {
 
     // --- Status & workspace routes ---
 
-    this.app.get('/api/status', (_req, res) => {
-      // Derive status from seed posts when available, otherwise return static mock
-      const agentNames = new Map<string, { role: string; content: string }>();
-      for (const p of this.posts) {
-        if (p.agentName && p.agentRole) {
-          agentNames.set(p.agentName, { role: p.agentRole, content: p.content });
-        }
-      }
+    app.get('/api/status', (_req, res) => {
+      const tasks = this.taskQueue?.listTasks() || [];
+      const inProgress = tasks.filter(t => t.status === 'in_progress');
+      const completed = tasks.filter(t => t.status === 'completed');
+      const open = tasks.filter(t => t.status === 'open');
 
+      // Build agent statuses from real task assignments
       const agents: { name: string; role: string; status: string; task?: string }[] = [];
-
-      for (const [name, info] of agentNames) {
-        if (info.role === 'director') {
-          agents.push({ name, role: 'director', status: 'idle' });
-        } else if (info.role === 'worker') {
-          // Extract a task hint from last post
-          const taskMatch = info.content.match(/(?:implement|add|fix|build|create|update)\s+(.{4,40})/i);
+      for (const task of inProgress) {
+        if (task.assignedTo) {
           agents.push({
-            name,
+            name: task.assignedTo,
             role: 'worker',
             status: 'working',
-            task: taskMatch ? taskMatch[1].replace(/[.!]+$/, '').trim() : 'coding',
+            task: task.title,
           });
-        } else if (info.role === 'steward') {
-          const prMatch = info.content.match(/PR\s*#?\d+/i);
-          agents.push({
-            name,
-            role: 'steward',
-            status: 'reviewing',
-            task: prMatch ? prMatch[0] : 'reviewing code',
-          });
-        } else {
-          agents.push({ name, role: info.role, status: 'idle' });
         }
       }
 
-      // Fallback mock if no posts yet
+      // Derive agents from feed posts if no task-based agents
       if (agents.length === 0) {
-        agents.push(
-          { name: 'alice', role: 'director', status: 'idle' },
-          { name: 'bob', role: 'worker', status: 'working', task: 'Add login form' },
-          { name: 'carol', role: 'steward', status: 'reviewing', task: 'PR #42' },
-        );
+        const agentNames = new Map<string, { role: string; content: string }>();
+        for (const p of this.posts) {
+          if (p.agentName && p.agentRole) {
+            agentNames.set(p.agentName, { role: p.agentRole, content: p.content });
+          }
+        }
+
+        for (const [name, info] of agentNames) {
+          if (info.role === 'director') {
+            agents.push({ name, role: 'director', status: 'idle' });
+          } else if (info.role === 'worker') {
+            const taskMatch = info.content.match(/(?:implement|add|fix|build|create|update)\s+(.{4,40})/i);
+            agents.push({
+              name,
+              role: 'worker',
+              status: 'working',
+              task: taskMatch ? taskMatch[1].replace(/[.!]+$/, '').trim() : 'coding',
+            });
+          } else if (info.role === 'steward') {
+            const prMatch = info.content.match(/PR\s*#?\d+/i);
+            agents.push({
+              name,
+              role: 'steward',
+              status: 'reviewing',
+              task: prMatch ? prMatch[0] : 'reviewing code',
+            });
+          } else {
+            agents.push({ name, role: info.role, status: 'idle' });
+          }
+        }
+      }
+
+      // Fallback if still no agents
+      if (agents.length === 0) {
+        agents.push({ name: 'Director', role: 'director', status: 'idle' });
       }
 
       res.json({
         agents,
-        activePlan: 'Auth System (2/4 tasks complete)',
+        tasks: {
+          open: open.length,
+          inProgress: inProgress.length,
+          completed: completed.length,
+          total: tasks.length,
+        },
+        activePlan: null,
         repoName: 'pi-slice',
       });
     });
 
-    this.app.get('/api/workspace', (_req, res) => {
+    // --- Task API routes ---
+
+    app.get('/api/tasks', (req, res) => {
+      if (!this.taskQueue) {
+        res.json([]);
+        return;
+      }
+      const status = req.query.status as string | undefined;
+      res.json(this.taskQueue.listTasks(status as TaskStatus | undefined));
+    });
+
+    app.post('/api/tasks', (req, res) => {
+      if (!this.taskQueue) {
+        res.status(503).json({ error: 'Task queue not available' });
+        return;
+      }
+      const { title, description, priority, planId } = req.body as {
+        title?: string;
+        description?: string;
+        priority?: number;
+        planId?: string;
+      };
+      if (!title || typeof title !== 'string' || !title.trim()) {
+        res.status(400).json({ error: 'title is required' });
+        return;
+      }
+      const task = this.taskQueue.createTask(
+        title.trim(),
+        (description || title).trim(),
+        { priority: (priority as 1 | 2 | 3 | 4 | 5) || undefined, planId },
+      );
+
+      this.addPost({
+        agentName: 'Director',
+        agentRole: 'director',
+        content: `New task created: "${task.title}" (priority ${task.priority})`,
+      });
+
+      res.status(201).json(task);
+    });
+
+    app.get('/api/tasks/:id', (req, res) => {
+      if (!this.taskQueue) {
+        res.status(503).json({ error: 'Task queue not available' });
+        return;
+      }
+      const task = this.taskQueue.getTask(req.params.id);
+      if (!task) {
+        res.status(404).json({ error: 'task not found' });
+        return;
+      }
+      res.json(task);
+    });
+
+    app.post('/api/tasks/:id/complete', (req, res) => {
+      if (!this.taskQueue) {
+        res.status(503).json({ error: 'Task queue not available' });
+        return;
+      }
+      const task = this.taskQueue.getTask(req.params.id);
+      if (!task) {
+        res.status(404).json({ error: 'task not found' });
+        return;
+      }
+      const { result } = req.body as { result?: string };
+      const completed = this.taskQueue.completeTask(task.id, result || 'Manually completed');
+      res.json(completed);
+    });
+
+    app.get('/api/plans', (_req, res) => {
+      if (!this.taskQueue) {
+        res.json([]);
+        return;
+      }
+      res.json(this.taskQueue.listPlans());
+    });
+
+    app.post('/api/plans', (req, res) => {
+      if (!this.taskQueue) {
+        res.status(503).json({ error: 'Task queue not available' });
+        return;
+      }
+      const { title, tasks: taskTitles } = req.body as {
+        title?: string;
+        tasks?: string[];
+      };
+      if (!title || typeof title !== 'string' || !title.trim()) {
+        res.status(400).json({ error: 'title is required' });
+        return;
+      }
+      if (!taskTitles || !Array.isArray(taskTitles) || taskTitles.length === 0) {
+        res.status(400).json({ error: 'tasks array is required' });
+        return;
+      }
+      const plan = this.taskQueue.createPlan(title.trim(), taskTitles);
+
+      this.addPost({
+        agentName: 'Director',
+        agentRole: 'director',
+        content: `New plan created: "${plan.title}" with ${plan.taskIds.length} tasks`,
+      });
+
+      res.status(201).json(plan);
+    });
+
+    app.get('/api/workspace', (_req, res) => {
       res.json({
         repoName: 'pi-slice',
         branch: 'main',
@@ -376,7 +593,7 @@ export class FeedServer {
     });
 
     // SPA catch-all
-    this.app.get('*', (req, res) => {
+    app.get('*', (req, res) => {
       if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(__dirname, '../client/dist/index.html'));
       }
@@ -386,9 +603,8 @@ export class FeedServer {
     this.wss = new WebSocketServer({ server: this.server });
 
     this.wss.on('connection', (ws) => {
-      // Send current feed snapshot on connect
       ws.send(JSON.stringify({ type: 'snapshot', data: this.posts.slice().reverse() }));
-      ws.send(JSON.stringify({ type: 'agent-count', data: 3 })); // 3 default agents
+      ws.send(JSON.stringify({ type: 'agent-count', data: 3 }));
     });
   }
 

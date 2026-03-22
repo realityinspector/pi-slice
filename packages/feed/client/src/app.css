@@ -1310,5 +1310,19 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 .agent-msg-btn { background: #3B82F6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .agent-msg-btn:hover { background: #2563EB; }
 
+/* === Task List === */
+.task-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #1E293B; }
+.task-status { font-size: 16px; width: 24px; text-align: center; }
+.task-status-completed { color: #10B981; }
+.task-status-in_progress { color: #3B82F6; }
+.task-status-failed { color: #EF4444; }
+.task-status-open { color: #94A3B8; }
+.task-status-assigned { color: #F59E0B; }
+.task-info { flex: 1; }
+.task-info strong { display: block; color: #F8FAFC; font-size: 14px; }
+.task-assignee { color: #94A3B8; font-size: 12px; }
+.status-item.clickable { cursor: pointer; transition: color 0.15s; }
+.status-item.clickable:hover { color: #3B82F6; }
+
 /* === Hidden utility === */
 .hidden { display: none !important; }

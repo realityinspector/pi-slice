@@ -3,6 +3,7 @@ import { runSetupWizard } from './wizard.js';
 import { FeedServer } from '@slice/feed';
 import type { OnboardingState } from '@slice/feed';
 import { SlicePiProvider, AgentSpawner } from '@slice/pi-bridge';
+import { TaskQueue, DispatchDaemon } from '@slice/orchestrator';
 import { PeerBridge } from '@slice/federation';
 import { getInitialState } from './onboarding.js';
 import { scanRepo } from './repo-scanner.js';
@@ -27,7 +28,10 @@ async function main() {
   const provider = new SlicePiProvider({ openrouterApiKey: config.openrouterApiKey });
   const spawner = new AgentSpawner(provider);
 
-  // 5. Determine onboarding state and start feed server
+  // 5. Initialize task queue and dispatch daemon
+  const taskQueue = new TaskQueue();
+
+  // 6. Determine onboarding state and start feed server
   let onboardingState: OnboardingState | null = null;
   if (isFirstRun) {
     onboardingState = getInitialState();
@@ -38,31 +42,59 @@ async function main() {
     };
   }
 
-  const feed = new FeedServer(config.port, { onboardingState, provider });
+  const feed = new FeedServer(config.port, { onboardingState, provider, taskQueue });
   await feed.start();
 
-  // 6. Run wizard if first run (feed is available for welcome posts)
+  // 7. Create dispatch daemon with feed integration
+  const daemon = new DispatchDaemon(taskQueue, spawner, {
+    maxWorkers: config.maxWorkers,
+    pollIntervalMs: 5000,
+    workerModel: config.workerModel,
+    onTaskAssigned: (task, agent) => {
+      feed.addPost({
+        agentName: agent,
+        agentRole: 'worker',
+        content: `Picked up task: "${task.title}"`,
+      });
+    },
+    onTaskCompleted: (task) => {
+      feed.addPost({
+        agentName: task.assignedTo || 'worker',
+        agentRole: 'worker',
+        content: `Completed: "${task.title}"\n\n${task.result?.slice(0, 500) || ''}`,
+      });
+    },
+    onTaskFailed: (task) => {
+      feed.addPost({
+        agentName: task.assignedTo || 'worker',
+        agentRole: 'worker',
+        content: `Failed: "${task.title}"\nError: ${task.error}`,
+      });
+    },
+  });
+
+  // 8. Run wizard if first run (feed is available for welcome posts)
   if (isFirstRun) {
     const wizardResult = await runSetupWizard(config, feed);
     fs.writeFileSync(configPath, JSON.stringify(wizardResult, null, 2));
     console.log('Setup complete. Configuration saved.');
   }
 
-  // 6b. Scan the repo we're in and generate a report
+  // 8b. Scan the repo we're in and generate a report
   const repoInfo = await scanRepo(process.cwd());
   if (repoInfo && isFirstRun) {
     await generateRepoReport(feed, repoInfo);
     console.log(`Scanned repo: ${repoInfo.name} (${repoInfo.fileCount} files)`);
   }
 
-  // 6c. Seed demo data if requested or first run
+  // 8c. Seed demo data if requested or first run
   if (config.seedDemo || isFirstRun) {
     const { seedDemoData } = await import('./seed.js');
     await seedDemoData(feed);
     console.log('Demo data seeded.');
   }
 
-  // 7. Start peer bridge for multi-workspace federation
+  // 9. Start peer bridge for multi-workspace federation
   const bridge = new PeerBridge({
     workspaceName: repoInfo?.name || 'slice',
     workspacePort: config.port,
@@ -78,7 +110,10 @@ async function main() {
   });
   await bridge.start();
 
-  // 8. Post startup message
+  // 10. Start the dispatch daemon
+  daemon.start();
+
+  // 11. Post startup message
   feed.addPost({
     agentName: 'Slice',
     agentRole: 'system',
@@ -89,9 +124,10 @@ async function main() {
   console.log(`Data directory: ${config.dataDir}`);
   console.log(`Auth token: ${config.authToken}`);
 
-  // 9. Graceful shutdown
+  // 12. Graceful shutdown
   const shutdown = async () => {
     console.log('Shutting down...');
+    daemon.stop();
     await bridge.stop();
     await spawner.closeAll();
     await feed.stop();

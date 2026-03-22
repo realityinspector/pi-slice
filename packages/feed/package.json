@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@slice/core": "workspace:*",
+    "@slice/orchestrator": "workspace:*",
     "express": "^4.21.0",
     "ws": "^8.18.0"
   },
