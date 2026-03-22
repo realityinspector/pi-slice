@@ -1,0 +1,26 @@
+{
+  "name": "@slice/feed",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && cd client && npx vite build",
+    "build:server": "tsc",
+    "build:client": "cd client && npx vite build",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist client/dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@slice/core": "workspace:*",
+    "express": "^4.21.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/ws": "^8.5.12",
+    "@types/node": "^20.0.0"
+  },
+  "type": "module"
+}

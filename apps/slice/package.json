@@ -1,0 +1,26 @@
+{
+  "name": "@slice/app",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@slice/core": "workspace:*",
+    "@slice/storage": "workspace:*",
+    "@slice/quarry": "workspace:*",
+    "@slice/orchestrator": "workspace:*",
+    "@slice/pi-bridge": "workspace:*",
+    "@slice/feed": "workspace:*",
+    "@slice/federation": "workspace:*",
+    "@slice/deploy": "workspace:*",
+    "dotenv": "^16.4.0"
+  },
+  "type": "module"
+}

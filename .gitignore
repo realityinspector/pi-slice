@@ -1,0 +1,27 @@
+/.stoneforge/.worktrees/
+
+# Environment
+.env
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+.turbo
+*.tsbuildinfo
+
+# Data
+*.db
+.slice/
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# OS
+.DS_Store
+
+# Feed client build
+packages/feed/client/dist/
+packages/feed/client/node_modules/

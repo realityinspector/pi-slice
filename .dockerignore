@@ -1,0 +1,9 @@
+node_modules
+dist
+.turbo
+.git
+.env
+*.db
+.DS_Store
+.stoneforge
+.claude

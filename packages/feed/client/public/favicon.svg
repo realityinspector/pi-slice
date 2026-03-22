@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="c" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="f" x1="30%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#93C5FD"/>
+      <stop offset="100%" stop-color="#60A5FA"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Simplified pie slice for small sizes -->
+  <!-- Top face -->
+  <path d="M15 4 L6 25 A 20 20 0 0 0 26 25 Z" fill="url(#f)" />
+
+  <!-- Crust arc -->
+  <path d="M5 24 A 20 20 0 0 1 27 24 L26 25 A 18 18 0 0 0 6 25 Z" fill="url(#c)" />
+
+  <!-- Left side depth -->
+  <path d="M15 4 L6 25 L5 27 L14 6 Z" fill="#2563EB" opacity="0.8" />
+
+  <!-- Right side depth -->
+  <path d="M15 4 L26 25 L27 27 L16 6 Z" fill="#1E40AF" opacity="0.5" />
+
+  <!-- Bottom crust depth -->
+  <path d="M6 25 L5 27 A 20 20 0 0 0 27 27 L26 25 A 18 18 0 0 1 5 24 Z" fill="url(#c)" opacity="0.65" />
+
+  <!-- Sparkle at tip -->
+  <circle cx="15" cy="8" r="1.5" fill="#fff" opacity="0.75" />
+</svg>

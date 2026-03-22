@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="crust" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="fill" x1="30%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#93C5FD"/>
+      <stop offset="100%" stop-color="#60A5FA"/>
+    </linearGradient>
+    <linearGradient id="side" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1E40AF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Pie slice - 3/4 view with curved crust -->
+  <!-- Main top face of the slice -->
+  <path d="M62 22 L30 98 A 72 72 0 0 0 96 98 Z"
+        fill="url(#fill)" />
+
+  <!-- Crust arc (thick curved top edge) -->
+  <path d="M26 96 A 74 74 0 0 1 100 96 L96 98 A 68 68 0 0 0 30 98 Z"
+        fill="url(#crust)" />
+
+  <!-- Left side face (3D depth) -->
+  <path d="M62 22 L30 98 L26 104 L58 28 Z"
+        fill="url(#side)" opacity="0.85" />
+
+  <!-- Bottom crust side face (3D depth) -->
+  <path d="M30 98 L26 104 A 74 74 0 0 0 102 104 L100 96 A 74 74 0 0 1 26 96 Z"
+        fill="url(#crust)" opacity="0.7" />
+
+  <!-- Right side face (3D depth, darker) -->
+  <path d="M62 22 L96 98 L102 104 L66 28 Z"
+        fill="url(#side)" opacity="0.5" />
+
+  <!-- Inner layer line (pie filling visible) -->
+  <path d="M42 72 A 48 48 0 0 0 84 72"
+        fill="none" stroke="#DBEAFE" stroke-width="1.5" opacity="0.6" />
+
+  <!-- Subtle top highlight -->
+  <path d="M62 26 L40 82 A 54 54 0 0 0 66 86 Z"
+        fill="rgba(255,255,255,0.12)" />
+
+  <!-- Circuit-line tech detail inside the slice -->
+  <g stroke="#DBEAFE" stroke-width="1.2" stroke-linecap="round" fill="none" opacity="0.55">
+    <line x1="58" y1="48" x2="50" y2="68" />
+    <line x1="58" y1="48" x2="72" y2="62" />
+    <line x1="50" y1="68" x2="72" y2="62" />
+    <line x1="72" y1="62" x2="76" y2="80" />
+    <line x1="50" y1="68" x2="54" y2="84" />
+  </g>
+
+  <!-- Circuit nodes -->
+  <g fill="#EFF6FF" opacity="0.75">
+    <circle cx="58" cy="48" r="2.8" />
+    <circle cx="50" cy="68" r="2.2" />
+    <circle cx="72" cy="62" r="2.2" />
+    <circle cx="76" cy="80" r="2" />
+    <circle cx="54" cy="84" r="2" />
+  </g>
+
+  <!-- Sparkle near the tip -->
+  <g fill="#fff" opacity="0.8">
+    <path d="M62 34 L63.2 37.5 L66.5 38 L63.8 40.2 L64.5 43.5 L62 41.5 L59.5 43.5 L60.2 40.2 L57.5 38 L60.8 37.5 Z" />
+  </g>
+</svg>

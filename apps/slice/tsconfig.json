@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "composite": true
+  },
+  "include": ["src"],
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/storage" },
+    { "path": "../../packages/quarry" },
+    { "path": "../../packages/orchestrator" },
+    { "path": "../../packages/pi-bridge" },
+    { "path": "../../packages/feed" },
+    { "path": "../../packages/federation" },
+    { "path": "../../packages/deploy" }
+  ]
+}

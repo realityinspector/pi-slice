@@ -1,0 +1,16 @@
+{
+  "name": "@slice/deploy",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@slice/core": "workspace:*"
+  },
+  "type": "module"
+}
