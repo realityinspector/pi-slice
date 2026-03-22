@@ -1007,10 +1007,14 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 }
 
 .agent-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px 16px;
+  margin: 0 20px;
   transition: background 0.15s;
 }
 .agent-card:hover { background: var(--surface-hover); }
@@ -1284,6 +1288,27 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 .compose-bar {
   position: fixed;
 }
+
+/* === Tab buttons (simplified) === */
+.tab { flex: 1; padding: 10px; background: none; border: none; color: #94A3B8; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab.active { color: #F8FAFC; border-bottom-color: #3B82F6; }
+.tab:hover { color: #F8FAFC; background: rgba(59,130,246,0.05); }
+
+/* === DM extras === */
+.dm-subtitle { display: block; color: #94A3B8; font-size: 12px; }
+.dm-suggestions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+.avatar.small { width: 28px; height: 28px; font-size: 12px; }
+.dm-bubble.user { justify-content: flex-end; }
+.dm-bubble.agent .dm-bubble-content { background: #1E293B; color: #E2E8F0; border-bottom-left-radius: 4px; }
+.dm-bubble.user .dm-bubble-content { background: #3B82F6; color: white; border-bottom-right-radius: 4px; }
+
+/* === Agent list extras === */
+.agents-list h2 { color: #F8FAFC; margin: 0 0 16px; font-size: 18px; padding: 20px 20px 0; }
+.agent-info { flex: 1; }
+.agent-info strong { color: #F8FAFC; display: block; margin-bottom: 2px; }
+.agent-info p { color: #94A3B8; font-size: 12px; margin: 4px 0 0; }
+.agent-msg-btn { background: #3B82F6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.agent-msg-btn:hover { background: #2563EB; }
 
 /* === Hidden utility === */
 .hidden { display: none !important; }

@@ -25,3 +25,4 @@ playwright-report/
 # Feed client build
 packages/feed/client/dist/
 packages/feed/client/node_modules/
+tests/screenshots/

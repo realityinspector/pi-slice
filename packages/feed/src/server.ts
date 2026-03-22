@@ -362,6 +362,7 @@ export class FeedServer {
     this.wss.on('connection', (ws) => {
       // Send current feed snapshot on connect
       ws.send(JSON.stringify({ type: 'snapshot', data: this.posts.slice().reverse() }));
+      ws.send(JSON.stringify({ type: 'agent-count', data: 3 })); // 3 default agents
     });
   }
 

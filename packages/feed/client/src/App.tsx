@@ -670,6 +670,112 @@ function CommentSheet({
   );
 }
 
+// --- DM Components ---
+
+function DirectorDM() {
+  const [messages, setMessages] = useState<Array<{role: 'user'|'agent', content: string, timestamp: string}>>([]);
+  const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    const userMsg = { role: 'user' as const, content: input, timestamp: new Date().toISOString() };
+    setMessages(prev => [...prev, userMsg]);
+    setInput('');
+
+    try {
+      const res = await fetch('/api/dm/director', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: input }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Find the agent's response (last message with role 'agent')
+        if (data.messages) {
+          const agentMsg = data.messages[data.messages.length - 1];
+          if (agentMsg?.role === 'agent') {
+            setMessages(prev => [...prev, agentMsg]);
+          }
+        }
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  return (
+    <div className="dm-view">
+      <div className="dm-header">
+        <div className="avatar" style={{ background: '#F59E0B' }}>D</div>
+        <div>
+          <strong>Director</strong>
+          <span className="dm-subtitle">Plan tasks, coordinate agents</span>
+        </div>
+      </div>
+      <div className="dm-messages">
+        {messages.length === 0 && (
+          <div className="dm-welcome">
+            <p>This is your direct line to the Director agent.</p>
+            <p>Tell it what you want to build, and it will create a plan.</p>
+            <div className="dm-suggestions">
+              {['Build a user auth system', 'Review open PRs and triage issues', "What's the current status?"].map(s => (
+                <button key={s} className="dm-suggestion" onClick={() => { setInput(s); }}>{s}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {messages.map((m, i) => (
+          <div key={i} className={`dm-bubble ${m.role}`}>
+            {m.role === 'agent' && <div className="avatar small" style={{ background: '#F59E0B' }}>D</div>}
+            <div className="dm-bubble-content">{m.content}</div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="compose-bar">
+        <div className="compose-inner">
+          <input value={input} onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && sendMessage()}
+            placeholder="Message Director..." />
+          <button onClick={sendMessage} disabled={!input.trim()} aria-label="Send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AgentsList({ onSelectAgent }: { onSelectAgent: (name: string) => void }) {
+  const agents = [
+    { name: 'alice', role: 'director', desc: 'Plans tasks, breaks down goals, assigns to workers', color: '#F59E0B' },
+    { name: 'bob', role: 'worker', desc: 'Executes tasks, writes code in isolated worktrees', color: '#3B82F6' },
+    { name: 'dave', role: 'worker', desc: 'Executes tasks, writes code in isolated worktrees', color: '#3B82F6' },
+    { name: 'carol', role: 'steward', desc: 'Reviews PRs, merges branches, scans documentation', color: '#10B981' },
+  ];
+  return (
+    <div className="agents-list">
+      <h2>Agents</h2>
+      {agents.map(a => (
+        <div key={a.name} className="agent-card">
+          <div className="avatar" style={{ background: a.color }}>{a.name[0].toUpperCase()}</div>
+          <div className="agent-info">
+            <strong>{a.name}</strong>
+            <span className="role-badge" style={{ color: a.color, background: a.color + '26' }}>{a.role}</span>
+            <p>{a.desc}</p>
+          </div>
+          <button className="agent-msg-btn" onClick={() => onSelectAgent(a.name)}>Message</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // --- Main App ---
 
 export function App() {
@@ -677,6 +783,7 @@ export function App() {
   const [commentPostId, setCommentPostId] = useState<string | null>(null);
   const [composeText, setComposeText] = useState('');
   const [agentCount, setAgentCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<'feed' | 'director' | 'agents'>('feed');
   const wsRef = useRef<WebSocket | null>(null);
   const composeRef = useRef<HTMLInputElement>(null);
 
@@ -888,57 +995,77 @@ export function App() {
       {/* Part 3: Status bar */}
       <StatusBar statusData={statusData} />
 
-      <main className="feed">
-        {showFirstTaskBanner && (
-          <FirstTaskBanner onDismiss={() => setShowFirstTaskBanner(false)} />
-        )}
-        {posts.map((post) => (
-          <PostCard
-            key={post.id}
-            post={post}
-            onLike={handleLike}
-            onOpenComments={setCommentPostId}
-          />
-        ))}
-        {posts.length === 0 && (
-          <div className="empty-state">No posts yet. The feed is quiet.</div>
-        )}
-      </main>
+      <nav className="tab-bar">
+        <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
+          {'\uD83D\uDCE2'} Feed
+        </button>
+        <button className={`tab ${activeTab === 'director' ? 'active' : ''}`} onClick={() => setActiveTab('director')}>
+          {'\u2B50'} Director
+        </button>
+        <button className={`tab ${activeTab === 'agents' ? 'active' : ''}`} onClick={() => setActiveTab('agents')}>
+          {'\uD83E\uDD16'} Agents
+        </button>
+      </nav>
 
-      <div className="compose-bar">
-        {/* Part 4: mention dropdown */}
-        <MentionDropdown
-          filter={mentionFilter}
-          onSelect={handleMentionSelect}
-          visible={mentionDropdownVisible}
-        />
-        <div className="compose-inner">
-          <input
-            ref={composeRef}
-            value={composeText}
-            onChange={handleComposeChange}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handlePost();
-              }
-              if (e.key === 'Escape') {
-                setMentionDropdownVisible(false);
-              }
-            }}
-            onBlur={() => {
-              setTimeout(() => setMentionDropdownVisible(false), 150);
-            }}
-            placeholder="What should we work on? @mention an agent..."
-          />
-          <button onClick={handlePost} disabled={!composeText.trim()} aria-label="Send">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
-        </div>
-      </div>
+      {activeTab === 'feed' && (
+        <>
+          <main className="feed">
+            {showFirstTaskBanner && (
+              <FirstTaskBanner onDismiss={() => setShowFirstTaskBanner(false)} />
+            )}
+            {posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onLike={handleLike}
+                onOpenComments={setCommentPostId}
+              />
+            ))}
+            {posts.length === 0 && (
+              <div className="empty-state">No posts yet. The feed is quiet.</div>
+            )}
+          </main>
+
+          <div className="compose-bar">
+            {/* Part 4: mention dropdown */}
+            <MentionDropdown
+              filter={mentionFilter}
+              onSelect={handleMentionSelect}
+              visible={mentionDropdownVisible}
+            />
+            <div className="compose-inner">
+              <input
+                ref={composeRef}
+                value={composeText}
+                onChange={handleComposeChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handlePost();
+                  }
+                  if (e.key === 'Escape') {
+                    setMentionDropdownVisible(false);
+                  }
+                }}
+                onBlur={() => {
+                  setTimeout(() => setMentionDropdownVisible(false), 150);
+                }}
+                placeholder="What should we work on? @mention an agent..."
+              />
+              <button onClick={handlePost} disabled={!composeText.trim()} aria-label="Send">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {activeTab === 'director' && <DirectorDM />}
+
+      {activeTab === 'agents' && <AgentsList onSelectAgent={() => setActiveTab('director')} />}
 
       {commentPost && (
         <CommentSheet
