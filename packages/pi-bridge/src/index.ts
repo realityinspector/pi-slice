@@ -4,6 +4,7 @@ export {
   type ToolDefinition,
   type StreamEvent,
   type UsageInfo,
+  type RateLimitInfo,
   type Message,
 } from './provider.js';
 

@@ -35,6 +35,17 @@ export interface UsageInfo {
   completionTokens: number;
   totalTokens: number;
   cost?: number;
+  /** Rate-limit metadata extracted from OpenRouter response headers */
+  rateLimit?: RateLimitInfo;
+}
+
+export interface RateLimitInfo {
+  /** Requests remaining in the current window */
+  requestsRemaining?: number;
+  /** Requests limit for the current window */
+  requestsLimit?: number;
+  /** Time (epoch seconds) when the rate limit resets */
+  requestsReset?: string;
 }
 
 export interface Message {
@@ -99,11 +110,37 @@ interface OpenRouterStreamChunk {
   usage?: OpenRouterUsage;
 }
 
-function mapUsage(u?: OpenRouterUsage): UsageInfo {
+function extractRateLimit(headers: Headers): RateLimitInfo | undefined {
+  const remaining = headers.get('x-ratelimit-remaining');
+  const limit = headers.get('x-ratelimit-limit');
+  const reset = headers.get('x-ratelimit-reset');
+
+  if (!remaining && !limit && !reset) return undefined;
+
+  return {
+    requestsRemaining: remaining ? parseInt(remaining, 10) : undefined,
+    requestsLimit: limit ? parseInt(limit, 10) : undefined,
+    requestsReset: reset ?? undefined,
+  };
+}
+
+function extractCostFromHeaders(headers: Headers): number | undefined {
+  // OpenRouter may include cost info in a custom header
+  const cost = headers.get('x-openrouter-cost');
+  if (cost) return parseFloat(cost);
+  return undefined;
+}
+
+function mapUsage(u?: OpenRouterUsage, headers?: Headers): UsageInfo {
+  const rateLimit = headers ? extractRateLimit(headers) : undefined;
+  const headerCost = headers ? extractCostFromHeaders(headers) : undefined;
+
   return {
     promptTokens: u?.prompt_tokens ?? 0,
     completionTokens: u?.completion_tokens ?? 0,
     totalTokens: u?.total_tokens ?? 0,
+    cost: headerCost,
+    rateLimit,
   };
 }
 
@@ -157,7 +194,7 @@ export class SlicePiProvider {
     const json = (await res.json()) as OpenRouterResponse;
     const choice = json.choices?.[0];
     const content = choice?.message?.content ?? '';
-    const usage = mapUsage(json.usage);
+    const usage = mapUsage(json.usage, res.headers);
 
     return { content, usage };
   }
@@ -186,6 +223,9 @@ export class SlicePiProvider {
       yield { type: 'error', error: 'Response body is null' };
       return;
     }
+
+    // Capture response headers for rate-limit / cost extraction
+    const responseHeaders = res.headers;
 
     // Accumulate partial tool call data across chunks
     const toolCalls: Map<number, { name: string; args: string }> = new Map();
@@ -221,7 +261,7 @@ export class SlicePiProvider {
               }
               yield { type: 'tool_use', toolName: tc.name, toolInput };
             }
-            yield { type: 'done', usage: mapUsage(lastUsage) };
+            yield { type: 'done', usage: mapUsage(lastUsage, responseHeaders) };
             return;
           }
 
@@ -278,7 +318,7 @@ export class SlicePiProvider {
       }
       yield { type: 'tool_use', toolName: tc.name, toolInput };
     }
-    yield { type: 'done', usage: mapUsage(lastUsage) };
+    yield { type: 'done', usage: mapUsage(lastUsage, responseHeaders) };
   }
 
   // ── List available models ─────────────────────────────────────────────
