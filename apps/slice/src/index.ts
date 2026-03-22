@@ -3,6 +3,7 @@ import { runSetupWizard } from './wizard.js';
 import { FeedServer } from '@slice/feed';
 import type { OnboardingState } from '@slice/feed';
 import { SlicePiProvider, AgentSpawner } from '@slice/pi-bridge';
+import { PeerBridge } from '@slice/federation';
 import { getInitialState } from './onboarding.js';
 import { scanRepo } from './repo-scanner.js';
 import { generateRepoReport } from './repo-report.js';
@@ -37,7 +38,7 @@ async function main() {
     };
   }
 
-  const feed = new FeedServer(config.port, { onboardingState });
+  const feed = new FeedServer(config.port, { onboardingState, provider });
   await feed.start();
 
   // 6. Run wizard if first run (feed is available for welcome posts)
@@ -61,7 +62,23 @@ async function main() {
     console.log('Demo data seeded.');
   }
 
-  // 7. Post startup message
+  // 7. Start peer bridge for multi-workspace federation
+  const bridge = new PeerBridge({
+    workspaceName: repoInfo?.name || 'slice',
+    workspacePort: config.port,
+    brokerPort: 7899,
+    onMessage: (msg) => {
+      // Inject cross-workspace messages into the feed
+      feed.addPost({
+        agentName: `${msg.fromName}`,
+        agentRole: 'system',
+        content: `[cross-workspace] ${msg.content}`,
+      });
+    },
+  });
+  await bridge.start();
+
+  // 8. Post startup message
   feed.addPost({
     agentName: 'Slice',
     agentRole: 'system',
@@ -72,9 +89,10 @@ async function main() {
   console.log(`Data directory: ${config.dataDir}`);
   console.log(`Auth token: ${config.authToken}`);
 
-  // 8. Graceful shutdown
+  // 9. Graceful shutdown
   const shutdown = async () => {
     console.log('Shutting down...');
+    await bridge.stop();
     await spawner.closeAll();
     await feed.stop();
     process.exit(0);

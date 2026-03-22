@@ -4,6 +4,9 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "slice-broker": "dist/broker-cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",

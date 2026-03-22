@@ -29,6 +29,7 @@ export interface OnboardingState {
 
 export interface FeedServerOptions {
   onboardingState?: OnboardingState | null;
+  provider?: { complete: (messages: any[], options?: any) => Promise<{ content: string; usage: any }> };
 }
 
 const ONBOARDING_STEP_ORDER: OnboardingStep[] = [
@@ -88,9 +89,11 @@ export class FeedServer {
   private posts: FeedPost[] = [];
   private dmThreads: Map<string, DMThread> = new Map();
   private onboardingState: OnboardingState | null;
+  private provider: FeedServerOptions['provider'];
 
   constructor(private port: number, options?: FeedServerOptions) {
     this.onboardingState = options?.onboardingState ?? null;
+    this.provider = options?.provider;
     this.app = express();
     this.app.use(express.json());
     this.app.use(express.static(path.join(__dirname, '../client/dist')));
@@ -250,13 +253,14 @@ export class FeedServer {
       res.json(thread);
     });
 
-    this.app.post('/api/dm/:agentName', (req, res) => {
+    this.app.post('/api/dm/:agentName', async (req, res) => {
       const { content } = req.body as { content?: string };
       if (!content || typeof content !== 'string' || !content.trim()) {
         res.status(400).json({ error: 'content is required' });
         return;
       }
-      const thread = getOrCreateDM(req.params.agentName);
+      const agentName = req.params.agentName;
+      const thread = getOrCreateDM(agentName);
       const now = new Date().toISOString();
 
       const userMsg: DMMessage = {
@@ -269,16 +273,38 @@ export class FeedServer {
       thread.lastMessageAt = now;
 
       // Agent auto-response
-      const agentTimestamp = new Date(Date.now() + 500).toISOString();
-      const isDirector = thread.agentRole === 'director';
-      const responseContent = isDirector
-        ? generateDirectorResponse(content)
-        : 'I received your message. (Agent responses coming in Phase 2)';
+      let agentResponse: string;
 
+      if (this.provider) {
+        // Use real LLM via OpenRouter
+        const systemPrompt = this.getAgentSystemPrompt(agentName);
+        const messages = [
+          { role: 'system' as const, content: systemPrompt },
+          ...thread.messages.map(m => ({
+            role: m.role === 'agent' ? 'assistant' as const : 'user' as const,
+            content: m.content,
+          })),
+        ];
+
+        try {
+          const result = await this.provider.complete(messages);
+          agentResponse = result.content;
+        } catch (err: any) {
+          agentResponse = `Error connecting to LLM: ${err.message}`;
+        }
+      } else {
+        // Fall back to mock responses
+        const isDirector = thread.agentRole === 'director';
+        agentResponse = isDirector
+          ? generateDirectorResponse(content)
+          : 'I received your message. (Agent responses coming in Phase 2)';
+      }
+
+      const agentTimestamp = new Date(Date.now() + 500).toISOString();
       const agentMsg: DMMessage = {
         id: crypto.randomUUID(),
         role: 'agent',
-        content: responseContent,
+        content: agentResponse,
         timestamp: agentTimestamp,
       };
       thread.messages.push(agentMsg);
@@ -364,6 +390,43 @@ export class FeedServer {
       ws.send(JSON.stringify({ type: 'snapshot', data: this.posts.slice().reverse() }));
       ws.send(JSON.stringify({ type: 'agent-count', data: 3 })); // 3 default agents
     });
+  }
+
+  /** Get system prompt for an agent based on its role. */
+  private getAgentSystemPrompt(agentName: string): string {
+    const KNOWN_AGENTS: Record<string, string> = {
+      director: 'director',
+      alice: 'director',
+      worker: 'worker',
+      bob: 'worker',
+      steward: 'steward',
+      carol: 'steward',
+    };
+    const role = KNOWN_AGENTS[agentName] || 'worker';
+
+    const prompts: Record<string, string> = {
+      director: `You are the Director agent in Slice, a social coding agent platform. Your name is "${agentName}".
+
+Your responsibilities:
+- Break down user requests into actionable tasks
+- Create plans with clear steps
+- Coordinate workers and stewards
+- Answer questions about the workspace and project status
+
+When the user asks you to build something, respond with a structured plan:
+1. Break it into 3-5 concrete tasks
+2. Estimate complexity (small/medium/large)
+3. Suggest which agent should handle each task
+
+Keep responses concise and actionable. Use markdown formatting.
+You're talking to the human workspace owner in a direct message.`,
+
+      worker: `You are a Worker agent in Slice named "${agentName}". You execute coding tasks in isolated git worktrees. You write code, run tests, and commit changes. When asked about your work, describe what you're doing technically. Keep responses focused and code-oriented.`,
+
+      steward: `You are a Steward agent in Slice named "${agentName}". You review PRs, merge branches, scan documentation, and maintain code quality. When asked about your work, focus on code review findings, test results, and merge status.`,
+    };
+
+    return prompts[role] || prompts.worker;
   }
 
   /** Add a post programmatically (for agent use). */
