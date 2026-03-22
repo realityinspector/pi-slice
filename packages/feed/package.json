@@ -10,6 +10,7 @@
     "build:client": "cd client && npx vite build",
     "dev": "tsc --watch",
     "clean": "rm -rf dist client/dist",
+    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

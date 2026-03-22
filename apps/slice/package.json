@@ -9,6 +9,7 @@
     "dev": "tsx src/index.ts",
     "build": "tsc",
     "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
