@@ -5,6 +5,7 @@ import type { OnboardingState } from '@slice/feed';
 import { SlicePiProvider, AgentSpawner } from '@slice/pi-bridge';
 import { TaskQueue, DispatchDaemon } from '@slice/orchestrator';
 import { PeerBridge } from '@slice/federation';
+import { createStorage } from '@slice/storage';
 import { getInitialState } from './onboarding.js';
 import { scanRepo } from './repo-scanner.js';
 import { generateRepoReport } from './repo-report.js';
@@ -28,8 +29,21 @@ async function main() {
   const provider = new SlicePiProvider({ openrouterApiKey: config.openrouterApiKey });
   const spawner = new AgentSpawner(provider);
 
-  // 5. Initialize task queue and dispatch daemon
-  const taskQueue = new TaskQueue();
+  // 5. Initialize SQLite persistence
+  let db: ReturnType<typeof createStorage> | null = null;
+  try {
+    const dbPath = path.join(config.dataDir, 'slice.db');
+    db = createStorage({ path: dbPath });
+    db.exec("PRAGMA journal_mode = WAL");
+    db.exec("PRAGMA busy_timeout = 5000");
+    console.log(`SQLite database opened at ${dbPath}`);
+  } catch (err) {
+    console.error('Failed to open SQLite database, running in-memory only:', err);
+    db = null;
+  }
+
+  // 5b. Initialize task queue and dispatch daemon (with optional persistence)
+  const taskQueue = new TaskQueue(db ?? undefined);
 
   // 6. Determine onboarding state and start feed server
   let onboardingState: OnboardingState | null = null;
@@ -42,7 +56,7 @@ async function main() {
     };
   }
 
-  const feed = new FeedServer(config.port, { onboardingState, provider, taskQueue });
+  const feed = new FeedServer(config.port, { onboardingState, provider, taskQueue, db: db ?? undefined });
   await feed.start();
 
   // 7. Create dispatch daemon with feed integration
@@ -124,13 +138,29 @@ async function main() {
   console.log(`Data directory: ${config.dataDir}`);
   console.log(`Auth token: ${config.authToken}`);
 
-  // 12. Graceful shutdown
+  // 12. Session cleanup interval (remove stale sessions every hour)
+  const sessionCleanupInterval = setInterval(() => {
+    // Placeholder: session cleanup logic would go here
+    // For now, just log
+    console.log('[cleanup] Session cleanup tick');
+  }, 60 * 60 * 1000);
+
+  // 13. Graceful shutdown
   const shutdown = async () => {
     console.log('Shutting down...');
+    clearInterval(sessionCleanupInterval);
     daemon.stop();
     await bridge.stop();
     await spawner.closeAll();
     await feed.stop();
+    if (db) {
+      try {
+        db.close();
+        console.log('SQLite database closed.');
+      } catch (err) {
+        console.error('Error closing database:', err);
+      }
+    }
     process.exit(0);
   };
 

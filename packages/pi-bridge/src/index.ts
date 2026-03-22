@@ -25,3 +25,10 @@ export {
   SessionAdapter,
   type SessionMetadata,
 } from './session-adapter.js';
+
+export { fetchWithTimeout } from './fetch-with-timeout.js';
+
+export {
+  CircuitBreaker,
+  type CircuitState,
+} from './circuit-breaker.js';

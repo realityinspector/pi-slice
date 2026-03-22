@@ -2,7 +2,7 @@ import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import path from 'path';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'url';
 import type { TaskQueue, TaskStatus } from '@slice/orchestrator';
 
@@ -28,10 +28,20 @@ export interface OnboardingState {
   workspaceName?: string;
 }
 
+/**
+ * Minimal DB interface matching StorageBackend's core methods.
+ */
+export interface FeedDb {
+  exec(sql: string): void;
+  run(sql: string, params?: unknown[]): { changes: number };
+  query<T extends Record<string, unknown> = Record<string, unknown>>(sql: string, params?: unknown[]): T[];
+}
+
 export interface FeedServerOptions {
   onboardingState?: OnboardingState | null;
   provider?: { complete: (messages: any[], options?: any) => Promise<{ content: string; usage: any }> };
   taskQueue?: TaskQueue;
+  db?: FeedDb;
 }
 
 const ONBOARDING_STEP_ORDER: OnboardingStep[] = [
@@ -80,6 +90,15 @@ export interface FeedPost {
   timestamp: string;
   likes: number;
   comments: FeedComment[];
+  editedAt?: string;
+}
+
+// --- Mention Parser ---
+
+function parseMention(content: string): { target: string; message: string } | null {
+  const match = content.match(/^@(director|worker|steward|all)\b\s*(.*)/is);
+  if (!match) return null;
+  return { target: match[1].toLowerCase(), message: match[2].trim() };
 }
 
 // --- Server ---
@@ -93,13 +112,51 @@ export class FeedServer {
   private onboardingState: OnboardingState | null;
   private provider: FeedServerOptions['provider'];
   private taskQueue: TaskQueue | null;
+  private db: FeedDb | null;
+  public persistenceStatus: 'ok' | 'degraded' | 'none' = 'none';
+  private broadcastSeq = 0;
+  private pingInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(private port: number, options?: FeedServerOptions) {
     this.onboardingState = options?.onboardingState ?? null;
     this.provider = options?.provider;
     this.taskQueue = options?.taskQueue ?? null;
+    this.db = options?.db ?? null;
+
+    if (this.db) {
+      try {
+        this.initSchema();
+        this.loadFromDb();
+        this.persistenceStatus = 'ok';
+      } catch (err) {
+        console.error('[FeedServer] Failed to initialize SQLite persistence:', err);
+        this.persistenceStatus = 'degraded';
+      }
+    }
+
     this.app = express();
-    this.app.use(express.json());
+    this.app.use(express.json({ limit: '64kb' }));
+
+    // --- Request ID middleware ---
+    this.app.use((req, res, next) => {
+      const requestId = req.headers['x-request-id'] as string || crypto.randomUUID();
+      (req as any).requestId = requestId;
+      res.setHeader('x-request-id', requestId);
+      next();
+    });
+
+    // --- Request logging middleware ---
+    this.app.use((req, res, next) => {
+      const start = Date.now();
+      res.on('finish', () => {
+        const duration = Date.now() - start;
+        if (duration > 1000 || res.statusCode >= 400) {
+          console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms [${(req as any).requestId}]`);
+        }
+      });
+      next();
+    });
+
     this.app.use(express.static(path.join(__dirname, '../client/dist')));
 
     const app = this.app;
@@ -107,7 +164,23 @@ export class FeedServer {
     // --- API routes ---
 
     app.get('/api/health', (_req, res) => {
-      res.json({ status: 'ok', uptime: process.uptime() });
+      res.json({
+        status: 'ok',
+        uptime: process.uptime(),
+        components: {
+          feed: 'ok',
+          websocket: this.wss?.clients?.size !== undefined ? 'ok' : 'error',
+          persistence: this.persistenceStatus,
+          tasks: this.taskQueue ? 'ok' : 'unavailable',
+        },
+        connections: this.wss?.clients?.size || 0,
+        posts: this.posts.length,
+        tasks: this.taskQueue ? {
+          open: this.taskQueue.listTasks('open').length,
+          inProgress: this.taskQueue.listTasks('in_progress').length,
+          completed: this.taskQueue.listTasks('completed').length,
+        } : null,
+      });
     });
 
     app.get('/api/feed', (_req, res) => {
@@ -122,7 +195,11 @@ export class FeedServer {
         agentRole?: string;
       };
       if (!content || typeof content !== 'string' || !content.trim()) {
-        res.status(400).json({ error: 'content is required' });
+        res.status(400).json({ error: 'content is required', requestId: (req as any).requestId });
+        return;
+      }
+      if (content.length > 10000) {
+        res.status(400).json({ error: 'Post content too long (max 10000 chars)', requestId: (req as any).requestId });
         return;
       }
       const trimmed = content.trim();
@@ -134,10 +211,10 @@ export class FeedServer {
       });
 
       // --- @mention detection ---
-      const mentionMatch = trimmed.match(/@(director|worker|steward|all)\s+(.+)/i);
-      if (mentionMatch && this.taskQueue) {
-        const targetRole = mentionMatch[1].toLowerCase();
-        const taskDescription = mentionMatch[2].trim();
+      const mention = parseMention(trimmed);
+      if (mention && this.taskQueue) {
+        const targetRole = mention.target;
+        const taskDescription = mention.message;
 
         if (targetRole === 'director') {
           const task = this.taskQueue.createTask(
@@ -205,10 +282,11 @@ export class FeedServer {
     app.post('/api/feed/:id/like', (req, res) => {
       const post = this.posts.find((p) => p.id === req.params.id);
       if (!post) {
-        res.status(404).json({ error: 'post not found' });
+        res.status(404).json({ error: 'Post not found', requestId: (req as any).requestId });
         return;
       }
       post.likes += 1;
+      this.dbRun('UPDATE posts SET likes = ? WHERE id = ?', [post.likes, post.id]);
       this.broadcast({ type: 'reaction', data: { postId: post.id, likes: post.likes } });
       res.json({ likes: post.likes });
     });
@@ -236,6 +314,7 @@ export class FeedServer {
         timestamp: new Date().toISOString(),
       };
       post.comments.push(comment);
+      this.dbRun('UPDATE posts SET comments = ? WHERE id = ?', [JSON.stringify(post.comments), post.id]);
       this.broadcast({ type: 'new-comment', data: { postId: post.id, comment } });
       res.status(201).json(comment);
     });
@@ -263,14 +342,17 @@ export class FeedServer {
       if (this.onboardingState.currentStep === 'complete') {
         const finalState = { ...this.onboardingState };
         this.onboardingState = null;
+        this.saveOnboarding('state', null);
         res.json({ active: false, state: finalState });
         return;
       }
+      this.saveOnboarding('state', this.onboardingState);
       res.json({ active: true, state: this.onboardingState });
     });
 
     app.post('/api/onboarding/skip', (_req, res) => {
       this.onboardingState = null;
+      this.saveOnboarding('state', null);
       res.json({ active: false, state: null });
     });
 
@@ -304,15 +386,15 @@ export class FeedServer {
     const generateDirectorResponse = (userMessage: string): string => {
       const lower = userMessage.toLowerCase();
       if (lower.includes('plan') || lower.includes('break down')) {
-        return `Here's my proposed plan:\n\n1. Analyze requirements and scope\n2. Break into subtasks:\n   - Task A: Set up data models\n   - Task B: Implement core logic\n   - Task C: Build UI components\n   - Task D: Integration tests\n3. Assign workers and set priorities\n4. Monitor progress and adjust\n\nShall I create these tasks and assign them?`;
+        return "Here's my proposed plan:\n\n1. Analyze requirements and scope\n2. Break into subtasks:\n   - Task A: Set up data models\n   - Task B: Implement core logic\n   - Task C: Build UI components\n   - Task D: Integration tests\n3. Assign workers and set priorities\n4. Monitor progress and adjust\n\nShall I create these tasks and assign them?";
       }
       if (lower.includes('status') || lower.includes('progress')) {
-        return `Current status report:\n\n- Active plan: Auth System\n- Tasks completed: 2/4\n- Worker (bob): implementing login form\n- Steward (carol): reviewing PR #42\n- No blockers detected\n\nOverall progress: on track.`;
+        return 'Current status report:\n\n- Active plan: Auth System\n- Tasks completed: 2/4\n- Worker (bob): implementing login form\n- Steward (carol): reviewing PR #42\n- No blockers detected\n\nOverall progress: on track.';
       }
       if (lower.includes('help') || lower.includes('what can')) {
-        return `I'm the Director agent. Here's what I can do:\n\n- Plan and break down projects into tasks\n- Assign work to Worker agents\n- Coordinate between Workers and Stewards\n- Report on progress and blockers\n- Reprioritize tasks based on feedback\n\nTry telling me what you want to build, or ask for a status update.`;
+        return "I'm the Director agent. Here's what I can do:\n\n- Plan and break down projects into tasks\n- Assign work to Worker agents\n- Coordinate between Workers and Stewards\n- Report on progress and blockers\n- Reprioritize tasks based on feedback\n\nTry telling me what you want to build, or ask for a status update.";
       }
-      return `I'll work on that. Creating tasks...`;
+      return "I'll work on that. Creating tasks...";
     };
 
     app.get('/api/dm', (_req, res) => {
@@ -345,6 +427,7 @@ export class FeedServer {
       };
       thread.messages.push(userMsg);
       thread.lastMessageAt = now;
+      this.persistDmMessage(agentName, userMsg);
 
       // Agent auto-response
       let agentResponse: string;
@@ -388,7 +471,7 @@ export class FeedServer {
               'Plan from Director DM',
               titles,
             );
-            agentResponse += `\n\n_Created plan with ${titles.length} tasks. The dispatch daemon will assign them to workers._`;
+            agentResponse += '\n\n_Created plan with ' + titles.length + ' tasks. The dispatch daemon will assign them to workers._';
           }
         }
       }
@@ -402,6 +485,7 @@ export class FeedServer {
       };
       thread.messages.push(agentMsg);
       thread.lastMessageAt = agentTimestamp;
+      this.persistDmMessage(agentName, agentMsg);
 
       res.status(201).json({ userMessage: userMsg, agentMessage: agentMsg });
     });
@@ -603,9 +687,207 @@ export class FeedServer {
     this.wss = new WebSocketServer({ server: this.server });
 
     this.wss.on('connection', (ws) => {
-      ws.send(JSON.stringify({ type: 'snapshot', data: this.posts.slice().reverse() }));
-      ws.send(JSON.stringify({ type: 'agent-count', data: 3 }));
+      // Reject if too many connections
+      if (this.wss.clients.size > 100) {
+        ws.close(1013, 'Too many connections');
+        return;
+      }
+
+      // Track liveness for ping/pong heartbeat
+      (ws as any).isAlive = true;
+      (ws as any).lastActivity = Date.now();
+
+      ws.on('pong', () => {
+        (ws as any).isAlive = true;
+        (ws as any).lastActivity = Date.now();
+      });
+
+      ws.on('message', () => {
+        (ws as any).lastActivity = Date.now();
+      });
+
+      // Send initial snapshot
+      try {
+        ws.send(JSON.stringify({ type: 'snapshot', data: this.posts.slice().reverse(), seq: this.broadcastSeq }));
+        ws.send(JSON.stringify({ type: 'agent-count', data: 3, seq: this.broadcastSeq }));
+      } catch (err) {
+        console.warn('Failed to send initial snapshot:', err);
+      }
     });
+
+    // Ping/pong heartbeat every 30s to detect dead connections
+    this.pingInterval = setInterval(() => {
+      const now = Date.now();
+      const idleTimeout = 5 * 60 * 1000; // 5 minutes
+      for (const ws of this.wss.clients) {
+        // Close idle connections
+        if (now - ((ws as any).lastActivity || 0) > idleTimeout) {
+          ws.terminate();
+          continue;
+        }
+        if (!(ws as any).isAlive) {
+          ws.terminate();
+          continue;
+        }
+        (ws as any).isAlive = false;
+        ws.ping();
+      }
+    }, 30000);
+
+    // Clean up ping interval when WSS closes
+    this.wss.on('close', () => {
+      if (this.pingInterval) {
+        clearInterval(this.pingInterval);
+        this.pingInterval = null;
+      }
+    });
+  }
+
+  // --- SQLite persistence helpers ---
+
+  private initSchema(): void {
+    this.db!.exec(`
+      CREATE TABLE IF NOT EXISTS posts (
+        id TEXT PRIMARY KEY,
+        agent_id TEXT,
+        agent_name TEXT,
+        agent_role TEXT DEFAULT 'human',
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        likes INTEGER NOT NULL DEFAULT 0,
+        comments TEXT NOT NULL DEFAULT '[]'
+      );
+
+      CREATE TABLE IF NOT EXISTS dm_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_name TEXT NOT NULL,
+        msg_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS onboarding (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
+  }
+
+  private loadFromDb(): void {
+    // Load posts
+    const postRows = this.db!.query<{
+      id: string;
+      agent_id: string | null;
+      agent_name: string | null;
+      agent_role: string | null;
+      content: string;
+      created_at: string;
+      likes: number;
+      comments: string;
+    }>('SELECT * FROM posts ORDER BY created_at ASC');
+
+    for (const row of postRows) {
+      let comments: FeedComment[] = [];
+      try {
+        comments = JSON.parse(row.comments);
+      } catch { /* ignore parse errors */ }
+      this.posts.push({
+        id: row.id,
+        agentId: row.agent_id ?? undefined,
+        agentName: row.agent_name ?? undefined,
+        agentRole: row.agent_role ?? undefined,
+        content: row.content,
+        timestamp: row.created_at,
+        likes: row.likes,
+        comments,
+      });
+    }
+
+    // Load DM threads from dm_messages
+    const dmRows = this.db!.query<{
+      agent_name: string;
+      msg_id: string;
+      role: string;
+      content: string;
+      created_at: string;
+    }>('SELECT * FROM dm_messages ORDER BY id ASC');
+
+    const KNOWN: Record<string, string> = {
+      director: 'director', alice: 'director',
+      worker: 'worker', bob: 'worker',
+      steward: 'steward', carol: 'steward',
+    };
+
+    for (const row of dmRows) {
+      let thread = this.dmThreads.get(row.agent_name);
+      if (!thread) {
+        thread = {
+          id: crypto.randomUUID(),
+          agentName: row.agent_name,
+          agentRole: KNOWN[row.agent_name] || 'system',
+          messages: [],
+          createdAt: row.created_at,
+          lastMessageAt: row.created_at,
+        };
+        this.dmThreads.set(row.agent_name, thread);
+      }
+      thread.messages.push({
+        id: row.msg_id,
+        role: row.role as 'user' | 'agent',
+        content: row.content,
+        timestamp: row.created_at,
+      });
+      thread.lastMessageAt = row.created_at;
+    }
+
+    // Load onboarding state
+    const onbRows = this.db!.query<{ key: string; value: string }>(
+      "SELECT * FROM onboarding WHERE key = 'state'",
+    );
+    if (onbRows.length > 0 && onbRows[0].value !== 'null') {
+      try {
+        const saved = JSON.parse(onbRows[0].value) as OnboardingState | null;
+        if (saved && !this.onboardingState) {
+          this.onboardingState = saved;
+        }
+      } catch { /* ignore */ }
+    }
+
+    console.log(`[FeedServer] Restored ${this.posts.length} posts, ${this.dmThreads.size} DM threads from SQLite`);
+  }
+
+  private dbRun(sql: string, params?: unknown[]): void {
+    if (!this.db) return;
+    try {
+      this.db.run(sql, params);
+    } catch (err) {
+      console.error('[FeedServer] SQLite write failed:', err);
+      this.persistenceStatus = 'degraded';
+    }
+  }
+
+  private persistPost(post: FeedPost): void {
+    this.dbRun(
+      `INSERT OR REPLACE INTO posts (id, agent_id, agent_name, agent_role, content, created_at, likes, comments)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [post.id, post.agentId ?? null, post.agentName ?? null, post.agentRole ?? null,
+       post.content, post.timestamp, post.likes, JSON.stringify(post.comments)],
+    );
+  }
+
+  private persistDmMessage(agentName: string, msg: DMMessage): void {
+    this.dbRun(
+      'INSERT INTO dm_messages (agent_name, msg_id, role, content, created_at) VALUES (?, ?, ?, ?, ?)',
+      [agentName, msg.id, msg.role, msg.content, msg.timestamp],
+    );
+  }
+
+  private saveOnboarding(key: string, value: unknown): void {
+    this.dbRun(
+      'INSERT OR REPLACE INTO onboarding (key, value) VALUES (?, ?)',
+      [key, JSON.stringify(value)],
+    );
   }
 
   /** Get system prompt for an agent based on its role. */
@@ -655,16 +937,24 @@ You're talking to the human workspace owner in a direct message.`,
       comments: [],
     };
     this.posts.push(newPost);
+    this.persistPost(newPost);
     this.broadcast({ type: 'new-post', data: newPost });
     return newPost;
   }
 
   /** Broadcast a JSON event to all connected WebSocket clients. */
-  broadcast(event: { type: string; data: unknown }): void {
-    const msg = JSON.stringify(event);
+  broadcast(message: Record<string, unknown>): void {
+    this.broadcastSeq++;
+    const payload = JSON.stringify({ ...message, seq: this.broadcastSeq });
+
     for (const client of this.wss.clients) {
       if (client.readyState === WebSocket.OPEN) {
-        client.send(msg);
+        try {
+          client.send(payload);
+        } catch (err) {
+          console.warn('WebSocket send failed, terminating client:', err);
+          try { client.terminate(); } catch { /* ignore */ }
+        }
       }
     }
   }
@@ -679,6 +969,10 @@ You're talking to the human workspace owner in a direct message.`,
   /** Gracefully stop the server. */
   stop(): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (this.pingInterval) {
+        clearInterval(this.pingInterval);
+        this.pingInterval = null;
+      }
       for (const client of this.wss.clients) {
         client.close();
       }

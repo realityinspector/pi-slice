@@ -77,6 +77,12 @@ interface ContextPill {
 
 // --- Helpers ---
 
+function fetchWithTimeout(url: string, opts: RequestInit = {}, timeoutMs = 10000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...opts, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
   if (seconds < 60) return 'just now';
@@ -335,7 +341,7 @@ function OnboardingModal({
 
   const advanceServer = useCallback(async () => {
     try {
-      await fetch('/api/onboarding/advance', { method: 'POST' });
+      await fetchWithTimeout('/api/onboarding/advance', { method: 'POST' });
     } catch {
       // non-critical
     }
@@ -353,7 +359,7 @@ function OnboardingModal({
 
   const handleSkip = useCallback(async () => {
     try {
-      await fetch('/api/onboarding/skip', { method: 'POST' });
+      await fetchWithTimeout('/api/onboarding/skip', { method: 'POST' });
     } catch {
       // non-critical
     }
@@ -670,15 +676,18 @@ function CommentSheet({
 
   const submit = async () => {
     if (!text.trim()) return;
-    const res = await fetch(`/api/feed/${post.id}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: text, authorName: 'User' }),
-    });
-    if (res.ok) {
+    try {
+      const res = await fetchWithTimeout(`/api/feed/${post.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: text, authorName: 'User' }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const comment: FeedComment = await res.json();
       setComments((prev) => [...prev, comment]);
       setText('');
+    } catch (err) {
+      console.warn('Comment submit failed:', err);
     }
   };
 
@@ -733,22 +742,23 @@ function DirectorDM() {
     setInput('');
 
     try {
-      const res = await fetch('/api/dm/director', {
+      const res = await fetchWithTimeout('/api/dm/director', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: input }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        // Find the agent's response (last message with role 'agent')
-        if (data.messages) {
-          const agentMsg = data.messages[data.messages.length - 1];
-          if (agentMsg?.role === 'agent') {
-            setMessages(prev => [...prev, agentMsg]);
-          }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      // Find the agent's response (last message with role 'agent')
+      if (data.messages) {
+        const agentMsg = data.messages[data.messages.length - 1];
+        if (agentMsg?.role === 'agent') {
+          setMessages(prev => [...prev, agentMsg]);
         }
       }
-    } catch {}
+    } catch (err) {
+      console.warn('DM send failed:', err);
+    }
   };
 
   useEffect(() => {
@@ -833,8 +843,11 @@ export function App() {
   const [composeText, setComposeText] = useState('');
   const [agentCount, setAgentCount] = useState(0);
   const [activeTab, setActiveTab] = useState<'feed' | 'director' | 'agents'>('feed');
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const composeRef = useRef<HTMLInputElement>(null);
+  const reconnectDelay = useRef(1000);
+  const maxReconnectDelay = 30000;
 
   // Onboarding state
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -858,36 +871,36 @@ export function App() {
     const alreadyComplete = localStorage.getItem(ONBOARDING_STORAGE_KEY);
     if (alreadyComplete) return;
 
-    fetch('/api/onboarding')
-      .then((r) => r.json())
+    fetchWithTimeout('/api/onboarding')
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((data) => {
         if (data.active && data.state) {
           setOnboardingState(data.state);
           setShowOnboarding(true);
         }
       })
-      .catch(() => {});
+      .catch((err) => console.warn('Onboarding fetch failed:', err));
   }, []);
 
   // Fetch status & workspace on mount
   useEffect(() => {
-    fetch('/api/status')
-      .then((r) => r.json())
+    fetchWithTimeout('/api/status')
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((data) => setStatusData(data))
-      .catch(() => {});
+      .catch((err) => console.warn('Status fetch failed:', err));
 
-    fetch('/api/workspace')
-      .then((r) => r.json())
+    fetchWithTimeout('/api/workspace')
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((data) => setWorkspace(data))
-      .catch(() => {});
+      .catch((err) => console.warn('Workspace fetch failed:', err));
   }, []);
 
   // Fetch tasks when overlay is opened
   const fetchTasks = useCallback(() => {
-    fetch('/api/tasks')
-      .then((r) => r.json())
-      .then((data) => setTaskList(data))
-      .catch(() => {});
+    fetchWithTimeout('/api/tasks')
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then((data) => { if (Array.isArray(data)) setTaskList(data); })
+      .catch((err) => console.warn('Tasks fetch failed:', err));
   }, []);
 
   const handleShowTasks = useCallback(() => {
@@ -908,13 +921,13 @@ export function App() {
 
   // Load initial feed
   useEffect(() => {
-    fetch('/api/feed')
-      .then((r) => r.json())
-      .then((data) => setPosts(data))
-      .catch(() => {});
+    fetchWithTimeout('/api/feed')
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then((data) => { if (Array.isArray(data)) setPosts(data); })
+      .catch((err) => console.warn('Feed fetch failed:', err));
   }, []);
 
-  // WebSocket for real-time updates
+  // WebSocket for real-time updates with exponential backoff
   useEffect(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -923,34 +936,57 @@ export function App() {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
+      ws.onopen = () => {
+        reconnectDelay.current = 1000; // reset on success
+        setConnectionStatus('connected');
+        // Refresh posts to catch anything missed during disconnect
+        fetchWithTimeout('/api/feed')
+          .then(r => r.ok ? r.json() : [])
+          .then(data => {
+            if (Array.isArray(data)) setPosts(data);
+          })
+          .catch(() => {});
+      };
+
       ws.onmessage = (event) => {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'new-post') {
-          setPosts((prev) => [msg.data, ...prev]);
-        } else if (msg.type === 'reaction') {
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === msg.data.postId ? { ...p, likes: msg.data.likes } : p
-            )
-          );
-        } else if (msg.type === 'new-comment') {
-          setPosts((prev) =>
-            prev.map((p) =>
-              p.id === msg.data.postId
-                ? { ...p, comments: [...p.comments, msg.data.comment] }
-                : p
-            )
-          );
-        } else if (msg.type === 'snapshot') {
-          setPosts(msg.data);
-        } else if (msg.type === 'agent-count') {
-          setAgentCount(msg.data);
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'new-post') {
+            setPosts((prev) => [msg.data, ...prev]);
+          } else if (msg.type === 'reaction') {
+            setPosts((prev) =>
+              prev.map((p) =>
+                p.id === msg.data.postId ? { ...p, likes: msg.data.likes } : p
+              )
+            );
+          } else if (msg.type === 'new-comment') {
+            setPosts((prev) =>
+              prev.map((p) =>
+                p.id === msg.data.postId
+                  ? { ...p, comments: [...p.comments, msg.data.comment] }
+                  : p
+              )
+            );
+          } else if (msg.type === 'snapshot') {
+            if (Array.isArray(msg.data)) setPosts(msg.data);
+          } else if (msg.type === 'agent-count') {
+            setAgentCount(msg.data);
+          }
+        } catch (err) {
+          console.warn('WebSocket message parse error:', err);
         }
       };
 
       ws.onclose = () => {
         wsRef.current = null;
-        setTimeout(connect, 2000);
+        setConnectionStatus('reconnecting');
+        const delay = reconnectDelay.current;
+        reconnectDelay.current = Math.min(delay * 2, maxReconnectDelay);
+        setTimeout(connect, delay);
+      };
+
+      ws.onerror = () => {
+        // onclose will fire after this, triggering reconnect
       };
 
       return ws;
@@ -970,18 +1006,28 @@ export function App() {
           : p
       )
     );
-    await fetch(`/api/feed/${postId}/like`, { method: 'POST' });
+    try {
+      const res = await fetchWithTimeout(`/api/feed/${postId}/like`, { method: 'POST' });
+      if (!res.ok) console.warn('Like failed:', res.status);
+    } catch (err) {
+      console.warn('Like request failed:', err);
+    }
   };
 
   const handlePost = async () => {
     if (!composeText.trim()) return;
-    await fetch('/api/feed', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: composeText, agentName: 'User' }),
-    });
-    setComposeText('');
-    setMentionDropdownVisible(false);
+    try {
+      const res = await fetchWithTimeout('/api/feed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: composeText, agentName: 'User' }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setComposeText('');
+      setMentionDropdownVisible(false);
+    } catch (err) {
+      console.warn('Post submit failed:', err);
+    }
   };
 
   // Part 1: insert mention from hint bar or dropdown
@@ -1027,6 +1073,10 @@ export function App() {
 
   return (
     <div className="app">
+      {connectionStatus === 'reconnecting' && (
+        <div className="connection-banner">Reconnecting...</div>
+      )}
+
       {showOnboarding && onboardingState && (
         <OnboardingModal
           state={onboardingState}

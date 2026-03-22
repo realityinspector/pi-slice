@@ -18,6 +18,8 @@ interface Message {
   content: string;
   timestamp: number;
   delivered: boolean;
+  acknowledged: boolean;
+  deliveryAttempts: number;
 }
 
 export class PeerBroker {
@@ -86,6 +88,8 @@ export class PeerBroker {
           content: body.content,
           timestamp: Date.now(),
           delivered: false,
+          acknowledged: false,
+          deliveryAttempts: 0,
         };
         this.messages.push(msg);
         res.end(JSON.stringify({ ok: true, messageId: msg.id }));
@@ -93,14 +97,32 @@ export class PeerBroker {
       }
 
       case '/poll-messages': {
-        const undelivered = this.messages.filter(m => m.toId === body.id && !m.delivered);
-        undelivered.forEach(m => m.delivered = true);
+        // Return unacknowledged messages for this peer
+        const undelivered = this.messages.filter(m => m.toId === body.id && !m.acknowledged);
+        undelivered.forEach(m => {
+          m.delivered = true;
+          m.deliveryAttempts++;
+        });
         // Include sender name
         const enriched = undelivered.map(m => {
           const sender = this.peers.get(m.fromId);
           return { ...m, fromName: sender?.name || 'unknown' };
         });
         res.end(JSON.stringify({ messages: enriched }));
+        break;
+      }
+
+      case '/ack': {
+        // Acknowledge receipt of a message
+        const { messageId, peerId } = body;
+        const msg = this.messages.find(m => m.id === messageId && m.toId === peerId);
+        if (msg) {
+          msg.acknowledged = true;
+          res.end(JSON.stringify({ ok: true }));
+        } else {
+          res.statusCode = 404;
+          res.end(JSON.stringify({ ok: false, error: 'message not found' }));
+        }
         break;
       }
 
@@ -134,8 +156,12 @@ export class PeerBroker {
         this.peers.delete(id);
       }
     }
-    // Remove old delivered messages (> 5 min)
-    this.messages = this.messages.filter(m => !m.delivered || now - m.timestamp < 300000);
+    // Remove acknowledged messages older than 5 min
+    // Keep unacknowledged messages for up to 10 minutes
+    this.messages = this.messages.filter(m => {
+      if (m.acknowledged) return now - m.timestamp < 300000;
+      return now - m.timestamp < 600000;
+    });
   }
 
   stop(): Promise<void> {

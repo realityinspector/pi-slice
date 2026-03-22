@@ -5,6 +5,9 @@
  * with Node.js built-in fetch (Node 22+).
  */
 
+import { fetchWithTimeout } from './fetch-with-timeout.js';
+import { CircuitBreaker } from './circuit-breaker.js';
+
 // ── Public types ────────────────────────────────────────────────────────────
 
 export interface CompletionOptions {
@@ -163,6 +166,7 @@ const DEFAULT_MODEL = 'anthropic/claude-sonnet-4';
 export class SlicePiProvider {
   private apiKey: string;
   private baseUrl: string;
+  readonly circuitBreaker: CircuitBreaker;
 
   constructor(config: { openrouterApiKey: string; baseUrl?: string }) {
     if (!config.openrouterApiKey) {
@@ -170,6 +174,7 @@ export class SlicePiProvider {
     }
     this.apiKey = config.openrouterApiKey;
     this.baseUrl = config.baseUrl ?? 'https://openrouter.ai/api/v1';
+    this.circuitBreaker = new CircuitBreaker({ maxFailures: 5, resetTimeMs: 30000 });
   }
 
   // ── Non-streaming completion ──────────────────────────────────────────
@@ -178,25 +183,28 @@ export class SlicePiProvider {
     messages: Message[],
     options?: CompletionOptions,
   ): Promise<{ content: string; usage: UsageInfo }> {
-    const body = this.buildRequestBody(messages, options, false);
+    return this.circuitBreaker.call(async () => {
+      const body = this.buildRequestBody(messages, options, false);
 
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify(body),
+      const res = await fetchWithTimeout(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(body),
+        timeoutMs: 30000,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`OpenRouter API error ${res.status}: ${text}`);
+      }
+
+      const json = (await res.json()) as OpenRouterResponse;
+      const choice = json.choices?.[0];
+      const content = choice?.message?.content ?? '';
+      const usage = mapUsage(json.usage);
+
+      return { content, usage };
     });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`OpenRouter API error ${res.status}: ${text}`);
-    }
-
-    const json = (await res.json()) as OpenRouterResponse;
-    const choice = json.choices?.[0];
-    const content = choice?.message?.content ?? '';
-    const usage = mapUsage(json.usage, res.headers);
-
-    return { content, usage };
   }
 
   // ── Streaming completion ──────────────────────────────────────────────
@@ -205,13 +213,29 @@ export class SlicePiProvider {
     messages: Message[],
     options?: CompletionOptions,
   ): AsyncGenerator<StreamEvent> {
+    if (this.circuitBreaker.getState() === 'open') {
+      yield { type: 'error', error: 'OpenRouter is temporarily unavailable (circuit breaker open)' };
+      return;
+    }
+
     const body = this.buildRequestBody(messages, options, true);
 
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(body),
+        timeoutMs: 30000,
+      });
+    } catch (err) {
+      // Record failure in circuit breaker by running it and letting it throw
+      try {
+        await this.circuitBreaker.call(async () => { throw err; });
+      } catch { /* rethrow handled below */ }
+      yield { type: 'error', error: err instanceof Error ? err.message : String(err) };
+      return;
+    }
 
     if (!res.ok) {
       const text = await res.text();
@@ -326,26 +350,29 @@ export class SlicePiProvider {
   async listModels(): Promise<
     Array<{ id: string; name: string; pricing: { prompt: number; completion: number } }>
   > {
-    const res = await fetch(`${this.baseUrl}/models`, {
-      method: 'GET',
-      headers: this.headers(),
+    return this.circuitBreaker.call(async () => {
+      const res = await fetchWithTimeout(`${this.baseUrl}/models`, {
+        method: 'GET',
+        headers: this.headers(),
+        timeoutMs: 10000,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`OpenRouter API error ${res.status}: ${text}`);
+      }
+
+      const json = (await res.json()) as OpenRouterModelsResponse;
+
+      return json.data.map((m) => ({
+        id: m.id,
+        name: m.name,
+        pricing: {
+          prompt: parseFloat(m.pricing.prompt),
+          completion: parseFloat(m.pricing.completion),
+        },
+      }));
     });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`OpenRouter API error ${res.status}: ${text}`);
-    }
-
-    const json = (await res.json()) as OpenRouterModelsResponse;
-
-    return json.data.map((m) => ({
-      id: m.id,
-      name: m.name,
-      pricing: {
-        prompt: parseFloat(m.pricing.prompt),
-        completion: parseFloat(m.pricing.completion),
-      },
-    }));
   }
 
   // ── Internals ─────────────────────────────────────────────────────────

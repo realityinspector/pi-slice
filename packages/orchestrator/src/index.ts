@@ -9,11 +9,14 @@ export {
   type Plan,
   type TaskStatus,
   type TaskPriority,
+  type PlanStatus,
+  type TaskQueueDb,
 } from './task-queue.js';
 
 export {
   DispatchDaemon,
   type DispatchDaemonConfig,
+  type DaemonMetrics,
 } from './dispatch-daemon.js';
 
 export const ORCHESTRATOR_VERSION = '0.1.0';

@@ -15,6 +15,8 @@ export interface SpawnOptions {
   sessionDir?: string;
   tools?: CompletionOptions['tools'];
   onEvent?: (event: StreamEvent) => void;
+  /** Maximum number of messages to keep in history (default: 20). System prompt is always preserved. */
+  maxMessages?: number;
 }
 
 export type SessionStatus = 'active' | 'paused' | 'closed';
@@ -51,6 +53,7 @@ class AgentSessionImpl implements AgentSession {
   private tools?: CompletionOptions['tools'];
   private onEvent?: (event: StreamEvent) => void;
   private abortController: AbortController | null = null;
+  private maxMessages: number;
 
   constructor(
     provider: SlicePiProvider,
@@ -63,6 +66,7 @@ class AgentSessionImpl implements AgentSession {
     this.provider = provider;
     this.tools = options.tools;
     this.onEvent = options.onEvent;
+    this.maxMessages = options.maxMessages ?? 20;
     this.startedAt = new Date();
 
     // Seed with system prompt as the first message
@@ -77,10 +81,21 @@ class AgentSessionImpl implements AgentSession {
   }
 
   /**
+   * Trim messages to keep history bounded. Preserves the system prompt (first message)
+   * and the most recent (maxMessages - 1) messages.
+   */
+  private trimMessages(): void {
+    if (this.messages.length <= this.maxMessages) return;
+    const system = this.messages[0];
+    this.messages.splice(0, this.messages.length, system, ...this.messages.slice(-(this.maxMessages - 1)));
+  }
+
+  /**
    * Send a user message, wait for a full response, and return the content.
    */
   async send(message: string): Promise<string> {
     this.ensureActive();
+    this.trimMessages();
 
     this.messages.push({ role: 'user', content: message });
     this.lastMessageAt = new Date();
@@ -102,6 +117,7 @@ class AgentSessionImpl implements AgentSession {
    */
   async *stream(message: string): AsyncGenerator<StreamEvent> {
     this.ensureActive();
+    this.trimMessages();
 
     this.messages.push({ role: 'user', content: message });
     this.lastMessageAt = new Date();
@@ -187,15 +203,45 @@ class AgentSessionImpl implements AgentSession {
 export class AgentSpawner {
   private provider: SlicePiProvider;
   private sessions = new Map<string, AgentSession>();
+  private readyCachedAt = 0;
+  private readyCached = false;
+  private static readonly READY_CACHE_TTL = 60000;
 
   constructor(provider: SlicePiProvider) {
     this.provider = provider;
   }
 
   /**
+   * Test provider readiness with a tiny completion.
+   * Result is cached for 60 seconds.
+   */
+  async ready(): Promise<boolean> {
+    const now = Date.now();
+    if (now - this.readyCachedAt < AgentSpawner.READY_CACHE_TTL) {
+      return this.readyCached;
+    }
+    try {
+      await this.provider.complete(
+        [{ role: 'user', content: 'ping' }],
+        { maxTokens: 1 },
+      );
+      this.readyCached = true;
+    } catch {
+      this.readyCached = false;
+    }
+    this.readyCachedAt = now;
+    return this.readyCached;
+  }
+
+  /**
    * Spawn a new agent session with the given options.
+   * Checks provider readiness first (cached for 60s).
    */
   async spawn(options: SpawnOptions): Promise<AgentSession> {
+    const isReady = await this.ready();
+    if (!isReady) {
+      throw new Error('Provider is not ready — cannot spawn agent session. Check API key and network connectivity.');
+    }
     const session = new AgentSessionImpl(this.provider, options);
     this.sessions.set(session.id, session);
     return session;
