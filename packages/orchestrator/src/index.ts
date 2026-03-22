@@ -1,7 +1,15 @@
 export {
   SessionManager,
   type SessionEntry,
+  type SessionManagerConfig,
 } from './session-manager.js';
+
+export {
+  WorktreeManager,
+  type WorktreeInfo,
+  type WorktreeStatus,
+  type WorktreeManagerConfig,
+} from './worktree-manager.js';
 
 export {
   TaskQueue,

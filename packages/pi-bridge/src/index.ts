@@ -17,13 +17,16 @@ export {
 export {
   AgentSpawner,
   type SpawnOptions,
+  type SpawnMode,
   type SessionStatus,
+  type SessionLifecyclePhase,
   type AgentSession,
 } from './spawner.js';
 
 export {
   SessionAdapter,
   type SessionMetadata,
+  type CompactionOptions,
 } from './session-adapter.js';
 
 export { fetchWithTimeout } from './fetch-with-timeout.js';
