@@ -1,152 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 500" width="600" height="500">
-  <defs>
-    <radialGradient id="pieGrad" cx="50%" cy="45%" r="50%">
-      <stop offset="0%" stop-color="#E8A849"/>
-      <stop offset="70%" stop-color="#C4782A"/>
-      <stop offset="100%" stop-color="#A05A1B"/>
-    </radialGradient>
-    <radialGradient id="fillingGrad" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#D4423B"/>
-      <stop offset="100%" stop-color="#8B1A15"/>
-    </radialGradient>
-    <linearGradient id="crustEdge" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#D4943A"/>
-      <stop offset="100%" stop-color="#8B5E1A"/>
-    </linearGradient>
-    <linearGradient id="plateGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#F5F0E8"/>
-      <stop offset="100%" stop-color="#D9D0C0"/>
-    </linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="130%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#00000033"/>
-    </filter>
-    <filter id="innerShadow">
-      <feComponentTransfer in="SourceAlpha">
-        <feFuncA type="table" tableValues="1 0"/>
-      </feComponentTransfer>
-      <feGaussianBlur stdDeviation="3"/>
-      <feOffset dx="0" dy="2" result="offsetblur"/>
-      <feFlood flood-color="#00000044" result="color"/>
-      <feComposite in2="offsetblur" operator="in"/>
-      <feComposite in2="SourceGraphic" operator="over"/>
-    </filter>
-    <!-- Checkered tablecloth pattern -->
-    <pattern id="checks" width="20" height="20" patternUnits="userSpaceOnUse">
-      <rect width="20" height="20" fill="#E85D4A"/>
-      <rect width="10" height="10" fill="#F2F0E8"/>
-      <rect x="10" y="10" width="10" height="10" fill="#F2F0E8"/>
-    </pattern>
-    <!-- steam wobble -->
-    <filter id="wobble">
-      <feTurbulence type="turbulence" baseFrequency="0.02" numOctaves="2" seed="3"/>
-      <feDisplacementMap in="SourceGraphic" scale="4"/>
-    </filter>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <!-- Single pie slice, line art, π on it -->
+  <g transform="translate(200, 220)">
+    <!-- The slice: a wedge ~45 degrees -->
+    <path d="M0,0 L-90,-150 A175,175 0 0,1 90,-150 Z" 
+          fill="none" stroke="#4A2508" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+    
+    <!-- Crust arc (thicker line on the outer edge) -->
+    <path d="M-90,-150 A175,175 0 0,1 90,-150" 
+          fill="none" stroke="#4A2508" stroke-width="10" stroke-linecap="round"/>
+    
+    <!-- Filling layer line inside the slice -->
+    <path d="M-12,-20 L-72,-120 A140,140 0 0,1 72,-120 Z" 
+          fill="none" stroke="#D4423B" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="none"/>
 
-  <!-- Tablecloth background -->
-  <rect x="0" y="380" width="600" height="120" fill="url(#checks)" rx="0"/>
-  <rect x="0" y="380" width="600" height="120" fill="#E85D4A22"/>
-
-  <!-- Plate -->
-  <ellipse cx="280" cy="310" rx="195" ry="50" fill="url(#plateGrad)" filter="url(#shadow)"/>
-  <ellipse cx="280" cy="307" rx="180" ry="44" fill="none" stroke="#C8BFB0" stroke-width="1.5"/>
-  <ellipse cx="280" cy="305" rx="160" ry="38" fill="none" stroke="#C8BFB055" stroke-width="1"/>
-
-  <!-- Pie body - a circle with a slice cut out (about 45 degrees) -->
-  <g transform="translate(280, 240)" filter="url(#shadow)">
-    <!-- Pie crust side (3D effect) -->
-    <path d="M-140,20 A140,140 0 1,1 99,-79 L99,-59 A140,140 0 1,0 -140,40 Z" fill="url(#crustEdge)" opacity="0.7"/>
-
-    <!-- Main pie top -->
-    <path d="M0,0 L0,-140 A140,140 0 1,1 99,-99 Z" fill="url(#pieGrad)" transform="rotate(0)"/>
-
-    <!-- Lattice crust lines -->
-    <g clip-path="url(#pieClip)" opacity="0.3">
-      <line x1="-120" y1="-100" x2="80" y2="100" stroke="#A05A1B" stroke-width="8" stroke-linecap="round"/>
-      <line x1="-80" y1="-120" x2="120" y2="80" stroke="#A05A1B" stroke-width="8" stroke-linecap="round"/>
-      <line x1="-140" y1="-40" x2="60" y2="140" stroke="#A05A1B" stroke-width="8" stroke-linecap="round"/>
-      <line x1="-40" y1="-140" x2="140" y2="40" stroke="#A05A1B" stroke-width="8" stroke-linecap="round"/>
-      <line x1="100" y1="-100" x2="-100" y2="100" stroke="#A05A1B" stroke-width="8" stroke-linecap="round"/>
-      <line x1="120" y1="-40" x2="-80" y2="140" stroke="#A05A1B" stroke-width="8" stroke-linecap="round"/>
-      <line x1="40" y1="-140" x2="-140" y2="40" stroke="#A05A1B" stroke-width="8" stroke-linecap="round"/>
-      <line x1="80" y1="-120" x2="-120" y2="80" stroke="#A05A1B" stroke-width="8" stroke-linecap="round"/>
-    </g>
-
-    <!-- Crust edge ring -->
-    <path d="M0,-140 A140,140 0 1,1 99,-99" fill="none" stroke="#8B5E1A" stroke-width="3" opacity="0.4"/>
-
-    <!-- Crimped crust edge bumps -->
-    <g opacity="0.5">
-      <circle cx="0" cy="-140" r="6" fill="#D4943A"/>
-      <circle cx="-40" cy="-135" r="6" fill="#D4943A"/>
-      <circle cx="-78" cy="-117" r="6" fill="#D4943A"/>
-      <circle cx="-110" cy="-89" r="6" fill="#D4943A"/>
-      <circle cx="-131" cy="-50" r="6" fill="#D4943A"/>
-      <circle cx="-140" cy="-8" r="6" fill="#D4943A"/>
-      <circle cx="-136" cy="34" r="6" fill="#D4943A"/>
-      <circle cx="-120" cy="72" r="6" fill="#D4943A"/>
-      <circle cx="-95" cy="103" r="6" fill="#D4943A"/>
-      <circle cx="-60" cy="126" r="6" fill="#D4943A"/>
-      <circle cx="-20" cy="139" r="6" fill="#D4943A"/>
-      <circle cx="22" cy="138" r="6" fill="#D4943A"/>
-      <circle cx="62" cy="126" r="6" fill="#D4943A"/>
-      <circle cx="96" cy="103" r="6" fill="#D4943A"/>
-      <circle cx="122" cy="70" r="6" fill="#D4943A"/>
-      <circle cx="137" cy="30" r="6" fill="#D4943A"/>
-      <circle cx="140" cy="-10" r="6" fill="#D4943A"/>
-      <circle cx="130" cy="-50" r="6" fill="#D4943A"/>
-    </g>
-
-    <!-- Exposed filling where slice was cut -->
-    <path d="M0,0 L99,-99 L140,-10 A140,140 0 0,1 0,140 L0,0" fill="none" opacity="0"/>
-    <!-- The cut edges showing filling -->
-    <line x1="0" y1="0" x2="0" y2="-140" stroke="#8B1A15" stroke-width="3" opacity="0.6"/>
-    <line x1="0" y1="0" x2="99" y2="-99" stroke="#8B1A15" stroke-width="3" opacity="0.6"/>
-
-    <!-- Pi symbol burned/branded into the crust -->
-    <text x="-35" y="20" font-family="Georgia, 'Times New Roman', serif" font-size="80" font-weight="bold" fill="#6B3A0A" opacity="0.6">&#960;</text>
-    <text x="-35" y="20" font-family="Georgia, 'Times New Roman', serif" font-size="80" font-weight="bold" fill="#E8C878" opacity="0.3">&#960;</text>
+    <!-- Pi symbol centered in the slice -->
+    <text x="0" y="-65" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="64" font-weight="bold" fill="#4A2508">π</text>
   </g>
 
-  <!-- The removed slice - floating nearby -->
-  <g transform="translate(460, 180) rotate(25)">
-    <g filter="url(#shadow)">
-      <!-- Slice shape -->
-      <path d="M0,0 L0,-90 A90,90 0 0,1 63.6,-63.6 Z" fill="url(#pieGrad)"/>
-      <!-- Filling visible on cut side -->
-      <path d="M0,0 L0,-90 A90,90 0 0,1 63.6,-63.6 Z" fill="url(#fillingGrad)" opacity="0.15"/>
-      <!-- Slice side (3D) -->
-      <path d="M0,0 L0,12 L0,-78 L0,-90 Z" fill="#A05A1B" opacity="0.5"/>
-      <path d="M0,0 L0,12 L63.6,-51.6 L63.6,-63.6 Z" fill="#8B5E1A" opacity="0.4"/>
-      <!-- Filling layer in the side -->
-      <path d="M0,-2 L0,6 L63.6,-57.6 L63.6,-61.6 Z" fill="#D4423B" opacity="0.7"/>
-      <!-- Crust bumps on arc -->
-      <circle cx="0" cy="-90" r="5" fill="#D4943A" opacity="0.5"/>
-      <circle cx="23" cy="-87" r="5" fill="#D4943A" opacity="0.5"/>
-      <circle cx="45" cy="-78" r="5" fill="#D4943A" opacity="0.5"/>
-      <circle cx="63.6" cy="-63.6" r="5" fill="#D4943A" opacity="0.5"/>
-    </g>
-  </g>
-
-  <!-- Steam wisps -->
-  <g opacity="0.25" fill="none" stroke="#F5F0E8" stroke-width="2.5" stroke-linecap="round">
-    <path d="M240,90 Q235,70 240,50 Q245,30 238,10" filter="url(#wobble)">
-      <animate attributeName="d" dur="3s" repeatCount="indefinite"
-        values="M240,90 Q235,70 240,50 Q245,30 238,10;M240,90 Q245,68 238,48 Q232,28 240,8;M240,90 Q235,70 240,50 Q245,30 238,10"/>
-    </path>
-    <path d="M270,85 Q275,60 268,40 Q262,20 270,0" filter="url(#wobble)">
-      <animate attributeName="d" dur="3.5s" repeatCount="indefinite"
-        values="M270,85 Q275,60 268,40 Q262,20 270,0;M270,85 Q263,58 270,38 Q277,18 268,-2;M270,85 Q275,60 268,40 Q262,20 270,0"/>
-    </path>
-    <path d="M300,88 Q295,65 302,45 Q308,25 300,5" filter="url(#wobble)">
-      <animate attributeName="d" dur="4s" repeatCount="indefinite"
-        values="M300,88 Q295,65 302,45 Q308,25 300,5;M300,88 Q307,63 298,43 Q290,23 300,3;M300,88 Q295,65 302,45 Q308,25 300,5"/>
-    </path>
-  </g>
-
-  <!-- Wordmark -->
-  <text x="280" y="430" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="52" font-weight="bold" fill="#4A2508" letter-spacing="3">
-    <tspan fill="#D4423B">&#960;</tspan><tspan>-slice</tspan>
+  <!-- Wordmark below -->
+  <text x="200" y="340" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="bold" fill="#4A2508" letter-spacing="2">
+    <tspan fill="#D4423B">π</tspan><tspan>-slice</tspan>
   </text>
-  <text x="280" y="462" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="16" fill="#8B5E1A" letter-spacing="6" font-style="italic">FRESH FROM THE OVEN</text>
+  <text x="200" y="370" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="14" fill="#8B5E1A" letter-spacing="5" font-style="italic">FRESH FROM THE OVEN</text>
 </svg>

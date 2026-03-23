@@ -1,43 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-  <defs>
-    <radialGradient id="pg" cx="50%" cy="45%" r="50%">
-      <stop offset="0%" stop-color="#E8A849"/>
-      <stop offset="70%" stop-color="#C4782A"/>
-      <stop offset="100%" stop-color="#A05A1B"/>
-    </radialGradient>
-    <radialGradient id="fg" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#D4423B"/>
-      <stop offset="100%" stop-color="#8B1A15"/>
-    </radialGradient>
-    <filter id="s" x="-5%" y="-5%" width="115%" height="120%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#00000033"/>
-    </filter>
-  </defs>
+  <g transform="translate(64, 72)">
+    <!-- The slice wedge -->
+    <path d="M0,0 L-32,-54 A63,63 0 0,1 32,-54 Z" 
+          fill="none" stroke="#4A2508" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+    
+    <!-- Crust (thicker outer arc) -->
+    <path d="M-32,-54 A63,63 0 0,1 32,-54" 
+          fill="none" stroke="#4A2508" stroke-width="7" stroke-linecap="round"/>
+    
+    <!-- Filling line -->
+    <path d="M-4,-7 L-25,-43 A50,50 0 0,1 25,-43 Z" 
+          fill="none" stroke="#D4423B" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 
-  <!-- Warm background circle -->
-  <circle cx="64" cy="64" r="62" fill="#FDF6EC"/>
-  <circle cx="64" cy="64" r="62" fill="none" stroke="#D4943A" stroke-width="2.5"/>
-
-  <!-- Pie body - circle with 45deg slice removed -->
-  <g transform="translate(64, 64)" filter="url(#s)">
-    <!-- Main pie -->
-    <path d="M0,0 L0,-46 A46,46 0 1,1 32.5,-32.5 Z" fill="url(#pg)"/>
-
-    <!-- Crimped edge -->
-    <path d="M0,-46 A46,46 0 1,1 32.5,-32.5" fill="none" stroke="#8B5E1A" stroke-width="2" opacity="0.4" stroke-dasharray="4 6"/>
-
-    <!-- Cut edges showing filling -->
-    <line x1="0" y1="0" x2="0" y2="-46" stroke="#D4423B" stroke-width="2.5"/>
-    <line x1="0" y1="0" x2="32.5" y2="-32.5" stroke="#D4423B" stroke-width="2.5"/>
-
-    <!-- Pi symbol branded into crust -->
-    <text x="-14" y="12" font-family="Georgia, serif" font-size="30" font-weight="bold" fill="#6B3A0A" opacity="0.55">&#960;</text>
-  </g>
-
-  <!-- Tiny floating slice -->
-  <g transform="translate(96, 26) rotate(30)" filter="url(#s)">
-    <path d="M0,0 L0,-18 A18,18 0 0,1 12.7,-12.7 Z" fill="url(#pg)"/>
-    <line x1="0" y1="0" x2="0" y2="-18" stroke="#D4423B" stroke-width="1.5"/>
-    <line x1="0" y1="0" x2="12.7" y2="-12.7" stroke="#D4423B" stroke-width="1.5"/>
+    <!-- Pi symbol -->
+    <text x="0" y="-20" text-anchor="middle" font-family="Georgia, serif" font-size="26" font-weight="bold" fill="#4A2508">π</text>
   </g>
 </svg>
