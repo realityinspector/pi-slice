@@ -42,13 +42,28 @@ async function main() {
   }
 
   // 4b. Initialize Quarry API (uses same SQLite backend)
-  const quarryApi = db ? createQuarryAPI(db as unknown as StorageBackend) : undefined;
+  let quarryApi: Awaited<ReturnType<typeof createQuarryAPI>> | undefined;
+  try {
+    if (db) {
+      quarryApi = createQuarryAPI(db as unknown as StorageBackend);
+      // Test that the schema is ready
+      await quarryApi.lookupEntityByName('__smoke_test__');
+    }
+  } catch (err) {
+    console.warn('[QuarryAPI] Schema not ready, running without Quarry:', (err as Error).message);
+    quarryApi = undefined;
+  }
 
   // 5. First-run detection: check Quarry for director entity
   //    Falls back to config.json check if Quarry is not available
   let needsWizard: boolean;
   if (quarryApi) {
-    needsWizard = await isFirstRun(quarryApi);
+    try {
+      needsWizard = await isFirstRun(quarryApi);
+    } catch {
+      needsWizard = true;
+      quarryApi = undefined;
+    }
   } else {
     const configPath = path.join(config.dataDir, 'config.json');
     needsWizard = !fs.existsSync(configPath);
