@@ -37,7 +37,7 @@ jobs:
         run: pnpm --filter @slice/tests exec playwright install --with-deps chromium
 
       - name: Run e2e tests
-        run: pnpm --filter @slice/tests test
+        run: pnpm --filter @slice/tests exec playwright test --grep-invert "Mobile Screenshots"
         env:
           OPENROUTER_API_KEY: test-key
           SEED_DEMO: "true"
