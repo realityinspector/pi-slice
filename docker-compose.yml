@@ -1,6 +1,8 @@
 services:
   slice:
-    build: .
+    build:
+      context: .
+      dockerfile: apps/slice/Dockerfile
     ports:
       - "${PORT:-8080}:8080"
     volumes:
