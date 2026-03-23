@@ -895,6 +895,14 @@ export class FeedServer {
         image_alt TEXT
       );
 
+    `);
+
+    // Migrations for existing DBs
+    try { this.db!.exec(`ALTER TABLE posts ADD COLUMN image_url TEXT`); } catch {}
+    try { this.db!.exec(`ALTER TABLE posts ADD COLUMN image_alt TEXT`); } catch {}
+    try { this.db!.exec(`ALTER TABLE posts ADD COLUMN agent_id TEXT`); } catch {}
+
+    this.db!.exec(`
       CREATE TABLE IF NOT EXISTS dm_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         agent_name TEXT NOT NULL,
