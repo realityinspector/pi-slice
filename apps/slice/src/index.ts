@@ -180,7 +180,7 @@ async function main() {
 
   // 13. Session cleanup interval (remove stale sessions every hour)
   const sessionCleanupInterval = setInterval(() => {
-    console.log('[cleanup] Session cleanup tick');
+    spawner.closeAll().catch(() => {});
   }, 60 * 60 * 1000);
 
   // 14. Graceful shutdown
