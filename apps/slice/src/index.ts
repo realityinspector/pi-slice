@@ -1,9 +1,10 @@
-import { loadConfig } from './config.js';
+import { loadConfig, logConfig } from './config.js';
 import { runSetupWizard } from './wizard.js';
 import { FeedServer } from '@slice/feed';
 import type { OnboardingState } from '@slice/feed';
 import { SlicePiProvider, AgentSpawner } from '@slice/pi-bridge';
 import { TaskQueue, DispatchDaemon } from '@slice/orchestrator';
+import type { Task } from '@slice/orchestrator';
 import { PeerBridge } from '@slice/federation';
 import { createStorage } from '@slice/storage';
 import { createQuarryAPI, type StorageBackend } from '@slice/quarry';
@@ -18,6 +19,7 @@ async function main() {
 
   // 1. Load configuration
   const config = loadConfig();
+  logConfig(config);
 
   // 2. Ensure data directory exists
   fs.mkdirSync(config.dataDir, { recursive: true });
@@ -68,21 +70,21 @@ async function main() {
     maxWorkers: config.maxWorkers,
     pollIntervalMs: 5000,
     workerModel: config.workerModel,
-    onTaskAssigned: (task, agent) => {
+    onTaskAssigned: (task: Task, agent: string) => {
       feed.addPost({
         agentName: agent,
         agentRole: 'worker',
         content: `Picked up task: "${task.title}"`,
       });
     },
-    onTaskCompleted: (task) => {
+    onTaskCompleted: (task: Task) => {
       feed.addPost({
         agentName: task.assignedTo || 'worker',
         agentRole: 'worker',
         content: `Completed: "${task.title}"\n\n${task.result?.slice(0, 500) || ''}`,
       });
     },
-    onTaskFailed: (task) => {
+    onTaskFailed: (task: Task) => {
       feed.addPost({
         agentName: task.assignedTo || 'worker',
         agentRole: 'worker',
@@ -117,7 +119,7 @@ async function main() {
     workspaceName: repoInfo?.name || 'slice',
     workspacePort: config.port,
     brokerPort: 7899,
-    onMessage: (msg) => {
+    onMessage: (msg: { fromName: string; content: string; timestamp: number }) => {
       // Inject cross-workspace messages into the feed
       feed.addPost({
         agentName: `${msg.fromName}`,
@@ -138,20 +140,20 @@ async function main() {
     content: `Slice is running. Feed available at http://localhost:${config.port}`,
   });
 
+  console.log('');
   console.log(`Slice is running at http://localhost:${config.port}`);
   console.log(`Data directory: ${config.dataDir}`);
   console.log(`Auth token: ${config.authToken}`);
+  console.log('');
 
   // 12. Session cleanup interval (remove stale sessions every hour)
   const sessionCleanupInterval = setInterval(() => {
-    // Placeholder: session cleanup logic would go here
-    // For now, just log
     console.log('[cleanup] Session cleanup tick');
   }, 60 * 60 * 1000);
 
   // 13. Graceful shutdown
   const shutdown = async () => {
-    console.log('Shutting down...');
+    console.log('\nShutting down gracefully...');
     clearInterval(sessionCleanupInterval);
     daemon.stop();
     await bridge.stop();
@@ -165,6 +167,7 @@ async function main() {
         console.error('Error closing database:', err);
       }
     }
+    console.log('Shutdown complete.');
     process.exit(0);
   };
 

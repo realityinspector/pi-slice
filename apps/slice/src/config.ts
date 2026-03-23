@@ -4,28 +4,38 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 
 export interface SliceConfig {
-  openrouterApiKey: string;
-  port: number;
-  dataDir: string;
-  directorModel: string;
-  workerModel: string;
-  stewardModel: string;
-  maxWorkers: number;
-  databaseUrl?: string;
-  federationPeers: string[];
-  authToken: string;
-  gitRemote?: string;
+  openrouterApiKey: string;      // Required — from OPENROUTER_API_KEY
+  port: number;                  // Default 8080
+  dataDir: string;               // Default /data (Docker) or .slice/data (local)
+  directorModel: string;         // Default anthropic/claude-sonnet-4
+  workerModel: string;           // Default anthropic/claude-sonnet-4
+  stewardModel: string;          // Default anthropic/claude-haiku
+  maxWorkers: number;            // Default 3
+  databaseUrl?: string;          // Optional PostgreSQL override
+  federationPeers: string[];     // Optional peer URLs
+  authToken: string;             // Auto-generated if not provided
+  gitRemote?: string;            // Optional git remote for push
   seedDemo: boolean;
 }
 
 export function loadConfig(): SliceConfig {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) {
-    console.error('ERROR: OPENROUTER_API_KEY is required. Set it in .env or as an environment variable.');
+    console.error(
+      '\n' +
+      '╔══════════════════════════════════════════════════════════════╗\n' +
+      '║  ERROR: OPENROUTER_API_KEY is required                      ║\n' +
+      '║                                                              ║\n' +
+      '║  Set it in your environment or create a .env file:          ║\n' +
+      '║    echo "OPENROUTER_API_KEY=sk-or-..." > .env               ║\n' +
+      '║                                                              ║\n' +
+      '║  Get a key at: https://openrouter.ai/keys                   ║\n' +
+      '╚══════════════════════════════════════════════════════════════╝\n'
+    );
     process.exit(1);
   }
 
-  return {
+  const config: SliceConfig = {
     openrouterApiKey: apiKey,
     port: parseInt(process.env.PORT || '8080', 10),
     dataDir: process.env.DATA_DIR || (fs.existsSync('/data') ? '/data' : path.join(process.cwd(), '.slice', 'data')),
@@ -39,4 +49,29 @@ export function loadConfig(): SliceConfig {
     gitRemote: process.env.GIT_REMOTE,
     seedDemo: process.env.SEED_DEMO === 'true',
   };
+
+  return config;
+}
+
+/**
+ * Log the loaded configuration (redacting secrets).
+ */
+export function logConfig(config: SliceConfig): void {
+  console.log('');
+  console.log('Configuration:');
+  console.log(`  Port:           ${config.port}`);
+  console.log(`  Data directory:  ${config.dataDir}`);
+  console.log(`  Max workers:     ${config.maxWorkers}`);
+  console.log('');
+  console.log('Models:');
+  console.log(`  Director:  ${config.directorModel}`);
+  console.log(`  Worker:    ${config.workerModel}`);
+  console.log(`  Steward:   ${config.stewardModel}`);
+  console.log('');
+  if (config.federationPeers.length > 0) {
+    console.log(`Federation peers: ${config.federationPeers.join(', ')}`);
+  }
+  if (config.gitRemote) {
+    console.log(`Git remote: ${config.gitRemote}`);
+  }
 }
