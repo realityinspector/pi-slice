@@ -95,6 +95,9 @@ importers:
       '@slice/orchestrator':
         specifier: workspace:*
         version: link:../orchestrator
+      '@slice/quarry':
+        specifier: workspace:*
+        version: link:../quarry
       express:
         specifier: ^4.21.0
         version: 4.22.1

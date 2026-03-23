@@ -6,6 +6,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { fileURLToPath } from 'url';
 import type { TaskQueue, TaskStatus } from '@slice/orchestrator';
+import type { QuarryAPI } from '@slice/quarry/api';
+import { QuarryFeedStore } from './store.js';
+import type { FeedPost as QuarryFeedPost, FeedComment as QuarryFeedComment } from './store.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,6 +46,7 @@ export interface FeedServerOptions {
   provider?: { complete: (messages: any[], options?: any) => Promise<{ content: string; usage: any }> };
   taskQueue?: TaskQueue;
   db?: FeedDb;
+  quarryApi?: QuarryAPI;
 }
 
 const ONBOARDING_STEP_ORDER: OnboardingStep[] = [
@@ -116,6 +120,8 @@ export class FeedServer {
   private provider: FeedServerOptions['provider'];
   private taskQueue: TaskQueue | null;
   private db: FeedDb | null;
+  private quarryStore: QuarryFeedStore | null = null;
+  private quarryReady = false;
   public persistenceStatus: 'ok' | 'degraded' | 'none' = 'none';
   private broadcastSeq = 0;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
@@ -125,6 +131,21 @@ export class FeedServer {
     this.provider = options?.provider;
     this.taskQueue = options?.taskQueue ?? null;
     this.db = options?.db ?? null;
+
+    // Initialize Quarry-backed store if API is provided
+    if (options?.quarryApi) {
+      this.quarryStore = new QuarryFeedStore(options.quarryApi);
+      // Init is async — we'll mark ready when done
+      this.quarryStore.init().then(() => {
+        this.quarryReady = true;
+        this.persistenceStatus = 'ok';
+        console.log('[FeedServer] Quarry feed store initialized');
+      }).catch((err) => {
+        console.error('[FeedServer] Failed to initialize Quarry feed store:', err);
+        this.quarryStore = null;
+        this.persistenceStatus = 'degraded';
+      });
+    }
 
     if (this.db) {
       try {
@@ -191,11 +212,22 @@ export class FeedServer {
       });
     });
 
-    app.get('/api/feed', (_req, res) => {
+    app.get('/api/feed', async (_req, res) => {
+      if (this.quarryStore && this.quarryReady) {
+        try {
+          const cursor = typeof _req.query.cursor === 'string' ? _req.query.cursor : undefined;
+          const limit = typeof _req.query.limit === 'string' ? parseInt(_req.query.limit, 10) : 20;
+          const result = await this.quarryStore.getFeed(cursor, limit);
+          res.json(result.posts);
+          return;
+        } catch (err) {
+          console.error('[FeedServer] Quarry getFeed failed, falling back to in-memory:', err);
+        }
+      }
       res.json(this.posts.slice().reverse());
     });
 
-    app.post('/api/feed', (req, res) => {
+    app.post('/api/feed', async (req, res) => {
       const { content, agentId, agentName, agentRole, imageBase64, imageAlt, imageUrl: providedImageUrl } = req.body as {
         content?: string;
         agentId?: string;
@@ -227,6 +259,20 @@ export class FeedServer {
           imageUrl = `/uploads/${id}.${ext}`;
         } catch (err) {
           console.error('[FeedServer] Failed to save uploaded image:', err);
+        }
+      }
+
+      // Write to Quarry store if available (in addition to in-memory)
+      if (this.quarryStore && this.quarryReady) {
+        try {
+          await this.quarryStore.createPost({
+            content: trimmed,
+            agentId,
+            agentName: agentName || 'Anonymous',
+            agentRole,
+          });
+        } catch (err) {
+          console.error('[FeedServer] Quarry createPost failed:', err);
         }
       }
 
@@ -309,6 +355,14 @@ export class FeedServer {
     });
 
     app.post('/api/feed/:id/like', (req, res) => {
+      // Try Quarry store first
+      if (this.quarryStore && this.quarryReady) {
+        const result = this.quarryStore.toggleLike(req.params.id);
+        this.broadcast({ type: 'reaction', data: { postId: req.params.id, likes: result.likes } });
+        res.json({ likes: result.likes, liked: result.liked });
+        return;
+      }
+
       const post = this.posts.find((p) => p.id === req.params.id);
       if (!post) {
         res.status(404).json({ error: 'Post not found', requestId: (req as any).requestId });
@@ -320,12 +374,7 @@ export class FeedServer {
       res.json({ likes: post.likes });
     });
 
-    app.post('/api/feed/:id/comments', (req, res) => {
-      const post = this.posts.find((p) => p.id === req.params.id);
-      if (!post) {
-        res.status(404).json({ error: 'post not found' });
-        return;
-      }
+    app.post('/api/feed/:id/comments', async (req, res) => {
       const { content: commentContent, authorId, authorName } = req.body as {
         content?: string;
         authorId?: string;
@@ -333,6 +382,29 @@ export class FeedServer {
       };
       if (!commentContent || typeof commentContent !== 'string' || !commentContent.trim()) {
         res.status(400).json({ error: 'content is required' });
+        return;
+      }
+
+      // Try Quarry store first
+      if (this.quarryStore && this.quarryReady) {
+        try {
+          const comment = await this.quarryStore.addComment(
+            req.params.id,
+            authorId || 'user',
+            authorName || 'Anonymous',
+            commentContent.trim(),
+          );
+          this.broadcast({ type: 'new-comment', data: { postId: req.params.id, comment } });
+          res.status(201).json(comment);
+          return;
+        } catch (err) {
+          console.error('[FeedServer] Quarry addComment failed:', err);
+        }
+      }
+
+      const post = this.posts.find((p) => p.id === req.params.id);
+      if (!post) {
+        res.status(404).json({ error: 'post not found' });
         return;
       }
       const comment: FeedComment = {
@@ -346,6 +418,26 @@ export class FeedServer {
       this.dbRun('UPDATE posts SET comments = ? WHERE id = ?', [JSON.stringify(post.comments), post.id]);
       this.broadcast({ type: 'new-comment', data: { postId: post.id, comment } });
       res.status(201).json(comment);
+    });
+
+    app.get('/api/feed/:id/comments', async (req, res) => {
+      // Try Quarry store first
+      if (this.quarryStore && this.quarryReady) {
+        try {
+          const comments = await this.quarryStore.getComments(req.params.id);
+          res.json(comments);
+          return;
+        } catch (err) {
+          console.error('[FeedServer] Quarry getComments failed:', err);
+        }
+      }
+
+      const post = this.posts.find((p) => p.id === req.params.id);
+      if (!post) {
+        res.status(404).json({ error: 'post not found' });
+        return;
+      }
+      res.json(post.comments);
     });
 
     // --- Onboarding routes ---
@@ -736,12 +828,26 @@ export class FeedServer {
       });
 
       // Send initial snapshot
-      try {
-        ws.send(JSON.stringify({ type: 'snapshot', data: this.posts.slice().reverse(), seq: this.broadcastSeq }));
-        ws.send(JSON.stringify({ type: 'agent-count', data: 3, seq: this.broadcastSeq }));
-      } catch (err) {
-        console.warn('Failed to send initial snapshot:', err);
-      }
+      const sendSnapshot = async () => {
+        try {
+          let posts: FeedPost[];
+          if (this.quarryStore && this.quarryReady) {
+            try {
+              const result = await this.quarryStore.getFeed(undefined, 50);
+              posts = result.posts as FeedPost[];
+            } catch {
+              posts = this.posts.slice().reverse();
+            }
+          } else {
+            posts = this.posts.slice().reverse();
+          }
+          ws.send(JSON.stringify({ type: 'snapshot', data: posts, seq: this.broadcastSeq }));
+          ws.send(JSON.stringify({ type: 'agent-count', data: 3, seq: this.broadcastSeq }));
+        } catch (err) {
+          console.warn('Failed to send initial snapshot:', err);
+        }
+      };
+      sendSnapshot();
     });
 
     // Ping/pong heartbeat every 30s to detect dead connections
@@ -979,6 +1085,19 @@ You're talking to the human workspace owner in a direct message.`,
     };
     this.posts.push(newPost);
     this.persistPost(newPost);
+
+    // Also persist to Quarry if available (fire-and-forget)
+    if (this.quarryStore && this.quarryReady) {
+      this.quarryStore.createPost({
+        content: post.content,
+        agentId: post.agentId,
+        agentName: post.agentName,
+        agentRole: post.agentRole,
+      }).catch((err) => {
+        console.error('[FeedServer] Quarry createPost (addPost) failed:', err);
+      });
+    }
+
     this.broadcast({ type: 'new-post', data: newPost });
     return newPost;
   }

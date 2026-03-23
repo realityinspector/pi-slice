@@ -8,6 +8,7 @@
   "include": ["src"],
   "references": [
     { "path": "../core" },
-    { "path": "../orchestrator" }
+    { "path": "../orchestrator" },
+    { "path": "../quarry" }
   ]
 }

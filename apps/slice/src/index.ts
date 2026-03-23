@@ -6,6 +6,7 @@ import { SlicePiProvider, AgentSpawner } from '@slice/pi-bridge';
 import { TaskQueue, DispatchDaemon } from '@slice/orchestrator';
 import { PeerBridge } from '@slice/federation';
 import { createStorage } from '@slice/storage';
+import { createQuarryAPI, type StorageBackend } from '@slice/quarry';
 import { getInitialState } from './onboarding.js';
 import { scanRepo } from './repo-scanner.js';
 import { generateRepoReport } from './repo-report.js';
@@ -56,7 +57,10 @@ async function main() {
     };
   }
 
-  const feed = new FeedServer(config.port, { onboardingState, provider, taskQueue, db: db ?? undefined });
+  // Initialize Quarry API for feed persistence (uses same SQLite backend)
+  const quarryApi = db ? createQuarryAPI(db as unknown as StorageBackend) : undefined;
+
+  const feed = new FeedServer(config.port, { onboardingState, provider, taskQueue, db: db ?? undefined, quarryApi });
   await feed.start();
 
   // 7. Create dispatch daemon with feed integration
