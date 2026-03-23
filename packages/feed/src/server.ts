@@ -527,7 +527,7 @@ export class FeedServer {
 
     app.get('/api/dm/:agentName', (req, res) => {
       const thread = getOrCreateDM(req.params.agentName);
-      res.json(thread);
+      res.json({ messages: thread.messages });
     });
 
     app.post('/api/dm/:agentName', async (req, res) => {
@@ -568,7 +568,8 @@ export class FeedServer {
           const result = await this.provider.complete(messages);
           agentResponse = result.content;
         } catch (err: any) {
-          agentResponse = `Error connecting to LLM: ${err.message}`;
+          console.error(`DM LLM error for ${agentName}:`, err);
+          agentResponse = `I'm having trouble responding right now. Please try again in a moment.`;
         }
       } else {
         // Fall back to mock responses
@@ -592,7 +593,7 @@ export class FeedServer {
               'Plan from Director DM',
               titles,
             );
-            agentResponse += '\n\n_Created plan with ' + titles.length + ' tasks. The dispatch daemon will assign them to workers._';
+            agentResponse += '\n\n_Created plan with ' + titles.length + ' tasks. Tasks will be automatically assigned to available workers._';
           }
         }
       }

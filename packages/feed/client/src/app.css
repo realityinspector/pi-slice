@@ -245,7 +245,9 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 12px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px 14px;
   border-radius: 20px;
   font-size: 13px;
   color: var(--text-dim);
@@ -1361,14 +1363,80 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 
 /* === Connection status banner === */
 .connection-banner {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
+  z-index: 200;
   background: #E8A849;
   color: #4A2508;
   text-align: center;
   padding: 4px;
   font-size: 12px;
-  z-index: 1000;
 }
+
+.banner-retry {
+  background: none;
+  color: inherit;
+  text-decoration: underline;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+/* === Character count === */
+.char-count {
+  font-size: 11px;
+  position: absolute;
+  right: 50px;
+  bottom: -16px;
+}
+
+/* === Typing indicator === */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px !important;
+}
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+}
+
+/* === Toast === */
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--cherry);
+  color: var(--cream);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 1000;
+  cursor: pointer;
+  animation: toast-in 0.3s ease;
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* === Button spinner === */
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--text-dim);
+  border-top-color: var(--cream);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

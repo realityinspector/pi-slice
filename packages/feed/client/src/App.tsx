@@ -254,7 +254,7 @@ function OnboardingConnectionCheck({
   return (
     <div className="onboarding-step">
       <h2 className="onboarding-title">
-        {checking ? 'Checking OpenRouter...' : connected ? 'Connection Verified' : 'Checking OpenRouter...'}
+        {checking ? 'Connecting to AI...' : connected ? 'Connection Verified' : 'Connecting to AI...'}
       </h2>
       <div className="onboarding-checks">
         <div className={`check-item${!checking && connected ? ' checked' : ''}`}>
@@ -262,7 +262,7 @@ function OnboardingConnectionCheck({
           <span>
             {!checking && connected
               ? `Connected \u2014 ${state.modelsAvailable || 352} models available`
-              : 'Connecting to OpenRouter...'}
+              : 'Connecting to AI...'}
           </span>
         </div>
         <div className={`check-item${!checking && connected ? ' checked' : ''}`}>
@@ -286,7 +286,7 @@ function OnboardingConnectionCheck({
       )}
       {!checking && !connected && (
         <p className="onboarding-error">
-          Could not connect. Check your OPENROUTER_API_KEY and restart.
+          Could not connect to AI. Check your API key and restart.
         </p>
       )}
     </div>
@@ -475,6 +475,11 @@ function ContextPillsDisplay({ pills }: { pills: ContextPill[] }) {
 // --- Task List Overlay ---
 
 function TaskList({ tasks, onClose }: { tasks: TaskData[]; onClose: () => void }) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
   return (
     <div className="sheet-overlay" onClick={onClose}>
       <div className="sheet" onClick={e => e.stopPropagation()} style={{ maxHeight: '70vh' }}>
@@ -644,7 +649,12 @@ function PostCard({
 
       {post.imageUrl && (
         <div className="post-image">
-          <img src={post.imageUrl} alt={post.imageAlt || 'Screenshot'} loading="lazy" />
+          <img
+            src={post.imageUrl}
+            alt={post.imageAlt || 'Screenshot'}
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
         </div>
       )}
 
@@ -670,9 +680,11 @@ function PostCard({
 function CommentSheet({
   post,
   onClose,
+  onError,
 }: {
   post: FeedPost;
   onClose: () => void;
+  onError?: (msg: string) => void;
 }) {
   const [text, setText] = useState('');
   const [comments, setComments] = useState<FeedComment[]>(post.comments);
@@ -680,6 +692,11 @@ function CommentSheet({
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
   }, []);
 
   const submit = async () => {
@@ -696,6 +713,7 @@ function CommentSheet({
       setText('');
     } catch (err) {
       console.warn('Comment submit failed:', err);
+      onError?.('Comment failed. Try again.');
     }
   };
 
@@ -741,13 +759,36 @@ function CommentSheet({
 function DirectorDM() {
   const [messages, setMessages] = useState<Array<{role: 'user'|'agent', content: string, timestamp: string}>>([]);
   const [input, setInput] = useState('');
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [dmToast, setDmToast] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Load existing DM history on mount
+  useEffect(() => {
+    fetchWithTimeout('/api/dm/director')
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(data => {
+        if (data.messages && Array.isArray(data.messages)) {
+          setMessages(data.messages);
+        }
+      })
+      .catch(() => {}); // silent - just means no history
+  }, []);
+
+  // Auto-dismiss DM toast
+  useEffect(() => {
+    if (dmToast) {
+      const t = setTimeout(() => setDmToast(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [dmToast]);
 
   const sendMessage = async () => {
     if (!input.trim()) return;
     const userMsg = { role: 'user' as const, content: input, timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    setIsWaiting(true);
 
     try {
       const res = await fetchWithTimeout('/api/dm/director', {
@@ -757,15 +798,14 @@ function DirectorDM() {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      // Find the agent's response (last message with role 'agent')
-      if (data.messages) {
-        const agentMsg = data.messages[data.messages.length - 1];
-        if (agentMsg?.role === 'agent') {
-          setMessages(prev => [...prev, agentMsg]);
-        }
+      if (data.agentMessage) {
+        setMessages(prev => [...prev, data.agentMessage]);
       }
     } catch (err) {
       console.warn('DM send failed:', err);
+      setDmToast('Message failed. Try again.');
+    } finally {
+      setIsWaiting(false);
     }
   };
 
@@ -800,8 +840,19 @@ function DirectorDM() {
             <div className="dm-bubble-content">{m.content}</div>
           </div>
         ))}
+        {isWaiting && (
+          <div className="dm-bubble agent">
+            <div className="avatar small" style={{ background: '#F59E0B' }}>D</div>
+            <div className="dm-bubble-content typing-indicator">
+              <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
+      {dmToast && (
+        <div className="toast" onClick={() => setDmToast(null)}>{dmToast}</div>
+      )}
       <div className="compose-bar">
         <div className="compose-inner">
           <input value={input} onChange={e => setInput(e.target.value)}
@@ -836,7 +887,11 @@ function AgentsList({ onSelectAgent }: { onSelectAgent: (name: string) => void }
             <span className="role-badge" style={{ color: a.color, background: a.color + '26' }}>{a.role}</span>
             <p>{a.desc}</p>
           </div>
-          <button className="agent-msg-btn" onClick={() => onSelectAgent(a.name)}>Message</button>
+          {a.role === 'director' ? (
+            <button className="agent-msg-btn" onClick={() => onSelectAgent(a.name)}>Message</button>
+          ) : (
+            <button className="agent-msg-btn" disabled title="DM coming soon" style={{ opacity: 0.5, cursor: 'default' }}>Coming soon</button>
+          )}
         </div>
       ))}
     </div>
@@ -850,7 +905,17 @@ export function App() {
   const [commentPostId, setCommentPostId] = useState<string | null>(null);
   const [composeText, setComposeText] = useState('');
   const [agentCount, setAgentCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<'feed' | 'director' | 'agents'>('feed');
+  const [activeTab, setActiveTab] = useState<'feed' | 'director' | 'agents'>(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'director' || hash === 'agents') return hash;
+    return 'feed';
+  });
+
+  const changeTab = useCallback((tab: 'feed' | 'director' | 'agents') => {
+    setActiveTab(tab);
+    window.location.hash = tab === 'feed' ? '' : tab;
+  }, []);
+
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'reconnecting' | 'disconnected'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const composeRef = useRef<HTMLInputElement>(null);
@@ -873,6 +938,20 @@ export function App() {
   // Part 4: mention dropdown
   const [mentionDropdownVisible, setMentionDropdownVisible] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
+
+  // Toast for error feedback
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Post submit loading state
+  const [isPosting, setIsPosting] = useState(false);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
 
   // Check onboarding on mount
   useEffect(() => {
@@ -1019,11 +1098,16 @@ export function App() {
       if (!res.ok) console.warn('Like failed:', res.status);
     } catch (err) {
       console.warn('Like request failed:', err);
+      // Rollback optimistic update
+      setPosts(prev => prev.map(p =>
+        p.id === postId ? { ...p, likes: p.likes + (p.likedByMe ? 1 : -1), likedByMe: !p.likedByMe } : p
+      ));
     }
   };
 
   const handlePost = async () => {
     if (!composeText.trim()) return;
+    setIsPosting(true);
     try {
       const res = await fetchWithTimeout('/api/feed', {
         method: 'POST',
@@ -1035,6 +1119,9 @@ export function App() {
       setMentionDropdownVisible(false);
     } catch (err) {
       console.warn('Post submit failed:', err);
+      setToast('Couldn\'t post. Try again.');
+    } finally {
+      setIsPosting(false);
     }
   };
 
@@ -1081,8 +1168,11 @@ export function App() {
 
   return (
     <div className="app">
-      {connectionStatus === 'reconnecting' && (
-        <div className="connection-banner">Reconnecting...</div>
+      {(connectionStatus === 'reconnecting' || connectionStatus === 'disconnected') && (
+        <div className="connection-banner">
+          {connectionStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}
+          {' '}<button className="banner-retry" onClick={() => window.location.reload()}>Refresh</button>
+        </div>
       )}
 
       {showOnboarding && onboardingState && (
@@ -1108,7 +1198,9 @@ export function App() {
         <div className="header-right">
           <span className="agent-indicator">
             <span className="online-dot" />
-            {agentCount > 0 ? `${agentCount} agent${agentCount !== 1 ? 's' : ''}` : 'connecting\u2026'}
+            {connectionStatus === 'connected'
+              ? (agentCount > 0 ? `${agentCount} agent${agentCount !== 1 ? 's' : ''}` : 'no agents')
+              : 'connecting\u2026'}
           </span>
         </div>
       </header>
@@ -1120,13 +1212,13 @@ export function App() {
       <StatusBar statusData={statusData} onShowTasks={handleShowTasks} />
 
       <nav className="tab-bar">
-        <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => setActiveTab('feed')}>
+        <button className={`tab ${activeTab === 'feed' ? 'active' : ''}`} onClick={() => changeTab('feed')}>
           {'\uD83D\uDCE2'} Feed
         </button>
-        <button className={`tab ${activeTab === 'director' ? 'active' : ''}`} onClick={() => setActiveTab('director')}>
+        <button className={`tab ${activeTab === 'director' ? 'active' : ''}`} onClick={() => changeTab('director')}>
           {'\u2B50'} Director
         </button>
-        <button className={`tab ${activeTab === 'agents' ? 'active' : ''}`} onClick={() => setActiveTab('agents')}>
+        <button className={`tab ${activeTab === 'agents' ? 'active' : ''}`} onClick={() => changeTab('agents')}>
           {'\uD83E\uDD16'} Agents
         </button>
       </nav>
@@ -1146,7 +1238,9 @@ export function App() {
               />
             ))}
             {posts.length === 0 && (
-              <div className="empty-state">No posts yet. The feed is quiet.</div>
+              <div className="empty-state">
+                No posts yet. Try typing <strong>@director</strong> in the compose bar below to get started.
+              </div>
             )}
           </main>
 
@@ -1176,25 +1270,33 @@ export function App() {
                 }}
                 placeholder="What should we work on? @mention an agent..."
               />
-              <button onClick={handlePost} disabled={!composeText.trim()} aria-label="Send">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
+              <button onClick={handlePost} disabled={!composeText.trim() || isPosting} aria-label="Send">
+                {isPosting ? <span className="btn-spinner" /> : (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                )}
               </button>
             </div>
+            {composeText.length > 9000 && (
+              <span className="char-count" style={{ color: composeText.length > 10000 ? 'var(--red)' : 'var(--text-dim)' }}>
+                {composeText.length.toLocaleString()}/10,000
+              </span>
+            )}
           </div>
         </>
       )}
 
       {activeTab === 'director' && <DirectorDM />}
 
-      {activeTab === 'agents' && <AgentsList onSelectAgent={() => setActiveTab('director')} />}
+      {activeTab === 'agents' && <AgentsList onSelectAgent={() => changeTab('director')} />}
 
       {commentPost && (
         <CommentSheet
           post={commentPost}
           onClose={() => setCommentPostId(null)}
+          onError={setToast}
         />
       )}
 
@@ -1203,6 +1305,10 @@ export function App() {
           tasks={taskList}
           onClose={() => setShowTasks(false)}
         />
+      )}
+
+      {toast && (
+        <div className="toast" onClick={() => setToast(null)}>{toast}</div>
       )}
 
       <footer className="app-footer">
