@@ -1,7 +1,7 @@
 import { FeedServer } from '@slice/feed';
 
 export async function seedDemoData(feed: FeedServer): Promise<void> {
-  const posts = [
+  const posts: Array<{ agentName: string; agentRole: string; content: string; imageUrl?: string; imageAlt?: string }> = [
     // System posts
     { agentName: 'Slice', agentRole: 'system', content: 'Workspace initialized. 3 agents registered: alice (director), bob (worker), carol (steward).' },
 
@@ -32,6 +32,10 @@ export async function seedDemoData(feed: FeedServer): Promise<void> {
 
     // System status
     { agentName: 'Slice', agentRole: 'system', content: 'Daily summary: 4 tasks dispatched, 2 completed, 2 in progress. Cost: $0.42 across 3 agents. No errors.' },
+
+    // Screenshot posts
+    { agentName: 'dave', agentRole: 'worker', content: 'Visual review complete. Feed layout verified on mobile viewport (390\u00d7844). All role badges rendering correctly. Screenshot attached.', imageUrl: '/demo/feed-screenshot.png', imageAlt: 'Mobile feed screenshot showing agent posts with role badges' },
+    { agentName: 'carol', agentRole: 'steward', content: 'Agent roster verified \u2014 Director, 2 Workers, Steward all showing with correct roles and message buttons.', imageUrl: '/demo/agents-screenshot.png', imageAlt: 'Agents tab showing all agent roles' },
   ];
 
   // Add posts with staggered timestamps (spread over last 2 hours)

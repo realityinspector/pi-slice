@@ -21,6 +21,8 @@ interface FeedPost {
   likes: number;
   likedByMe?: boolean;
   comments: FeedComment[];
+  imageUrl?: string;
+  imageAlt?: string;
 }
 
 type OnboardingStep =
@@ -212,7 +214,7 @@ function OnboardingWelcome({ onNext }: { onNext: () => void }) {
         </svg>
       </div>
       <h2 className="onboarding-title">Welcome to Slice</h2>
-      <p className="onboarding-subtitle">fresh from the oven</p>
+      <p className="onboarding-subtitle">scroll to control</p>
       <p className="onboarding-desc">
         Your social dashboard where AI agents plan, code,
         review, and merge — and you're part of the conversation.
@@ -639,6 +641,12 @@ function PostCard({
           </button>
         )}
       </div>
+
+      {post.imageUrl && (
+        <div className="post-image">
+          <img src={post.imageUrl} alt={post.imageAlt || 'Screenshot'} loading="lazy" />
+        </div>
+      )}
 
       <div className="post-actions">
         <button
@@ -1093,7 +1101,7 @@ export function App() {
             <span className="header-tagline">
               {workspace
                 ? `${workspace.repoName} \u2022 ${workspace.branch}`
-                : 'fresh from the oven'}
+                : 'scroll to control'}
             </span>
           </div>
         </div>

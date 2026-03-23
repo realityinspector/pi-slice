@@ -3,6 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import http from 'http';
 import path from 'path';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { fileURLToPath } from 'url';
 import type { TaskQueue, TaskStatus } from '@slice/orchestrator';
 
@@ -91,6 +92,8 @@ export interface FeedPost {
   likes: number;
   comments: FeedComment[];
   editedAt?: string;
+  imageUrl?: string;
+  imageAlt?: string;
 }
 
 // --- Mention Parser ---
@@ -135,7 +138,7 @@ export class FeedServer {
     }
 
     this.app = express();
-    this.app.use(express.json({ limit: '64kb' }));
+    this.app.use(express.json({ limit: '6mb' }));
 
     // --- Request ID middleware ---
     this.app.use((req, res, next) => {
@@ -158,6 +161,11 @@ export class FeedServer {
     });
 
     this.app.use(express.static(path.join(__dirname, '../client/dist')));
+
+    // Serve uploaded images
+    const uploadsDir = path.join(process.cwd(), '.slice', 'uploads');
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+    this.app.use('/uploads', express.static(uploadsDir));
 
     const app = this.app;
 
@@ -188,11 +196,14 @@ export class FeedServer {
     });
 
     app.post('/api/feed', (req, res) => {
-      const { content, agentId, agentName, agentRole } = req.body as {
+      const { content, agentId, agentName, agentRole, imageBase64, imageAlt, imageUrl: providedImageUrl } = req.body as {
         content?: string;
         agentId?: string;
         agentName?: string;
         agentRole?: string;
+        imageBase64?: string;
+        imageAlt?: string;
+        imageUrl?: string;
       };
       if (!content || typeof content !== 'string' || !content.trim()) {
         res.status(400).json({ error: 'content is required', requestId: (req as any).requestId });
@@ -203,11 +214,29 @@ export class FeedServer {
         return;
       }
       const trimmed = content.trim();
+
+      // Handle base64-encoded image upload
+      let imageUrl: string | undefined = providedImageUrl;
+      if (imageBase64 && typeof imageBase64 === 'string') {
+        const id = crypto.randomUUID();
+        const ext = imageBase64.startsWith('data:image/png') ? 'png' : 'jpg';
+        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+        const filePath = path.join(uploadsDir, `${id}.${ext}`);
+        try {
+          fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+          imageUrl = `/uploads/${id}.${ext}`;
+        } catch (err) {
+          console.error('[FeedServer] Failed to save uploaded image:', err);
+        }
+      }
+
       const post = this.addPost({
         content: trimmed,
         agentId,
         agentName: agentName || 'Anonymous',
         agentRole,
+        imageUrl,
+        imageAlt: imageAlt || undefined,
       });
 
       // --- @mention detection ---
@@ -755,7 +784,9 @@ export class FeedServer {
         content TEXT NOT NULL,
         created_at TEXT NOT NULL,
         likes INTEGER NOT NULL DEFAULT 0,
-        comments TEXT NOT NULL DEFAULT '[]'
+        comments TEXT NOT NULL DEFAULT '[]',
+        image_url TEXT,
+        image_alt TEXT
       );
 
       CREATE TABLE IF NOT EXISTS dm_messages (
@@ -785,6 +816,8 @@ export class FeedServer {
       created_at: string;
       likes: number;
       comments: string;
+      image_url: string | null;
+      image_alt: string | null;
     }>('SELECT * FROM posts ORDER BY created_at ASC');
 
     for (const row of postRows) {
@@ -801,6 +834,8 @@ export class FeedServer {
         timestamp: row.created_at,
         likes: row.likes,
         comments,
+        imageUrl: row.image_url ?? undefined,
+        imageAlt: row.image_alt ?? undefined,
       });
     }
 
@@ -869,10 +904,11 @@ export class FeedServer {
 
   private persistPost(post: FeedPost): void {
     this.dbRun(
-      `INSERT OR REPLACE INTO posts (id, agent_id, agent_name, agent_role, content, created_at, likes, comments)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR REPLACE INTO posts (id, agent_id, agent_name, agent_role, content, created_at, likes, comments, image_url, image_alt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [post.id, post.agentId ?? null, post.agentName ?? null, post.agentRole ?? null,
-       post.content, post.timestamp, post.likes, JSON.stringify(post.comments)],
+       post.content, post.timestamp, post.likes, JSON.stringify(post.comments),
+       post.imageUrl ?? null, post.imageAlt ?? null],
     );
   }
 
@@ -930,11 +966,16 @@ You're talking to the human workspace owner in a direct message.`,
   /** Add a post programmatically (for agent use). */
   addPost(post: Omit<FeedPost, 'id' | 'timestamp' | 'likes' | 'comments'>): FeedPost {
     const newPost: FeedPost = {
-      ...post,
       id: crypto.randomUUID(),
+      agentId: post.agentId,
+      agentName: post.agentName,
+      agentRole: post.agentRole,
+      content: post.content,
       timestamp: new Date().toISOString(),
       likes: 0,
       comments: [],
+      imageUrl: post.imageUrl,
+      imageAlt: post.imageAlt,
     };
     this.posts.push(newPost);
     this.persistPost(newPost);

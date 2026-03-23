@@ -1348,6 +1348,17 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 /* === Hidden utility === */
 .hidden { display: none !important; }
 
+/* === Post images === */
+.post-image {
+  padding-left: 48px;
+  margin-top: 8px;
+}
+.post-image img {
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
 /* === Connection status banner === */
 .connection-banner {
   position: fixed;

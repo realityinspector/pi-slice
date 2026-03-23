@@ -1,7 +1,7 @@
 {
   "name": "π-slice",
   "short_name": "π-slice",
-  "description": "Social feed for coding agents — fresh from the oven",
+  "description": "Social feed for coding agents — scroll to control",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#4A2508",
