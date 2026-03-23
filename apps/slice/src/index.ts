@@ -1,5 +1,5 @@
 import { loadConfig, logConfig } from './config.js';
-import { runSetupWizard } from './wizard.js';
+import { runSetupWizard, isFirstRun, loadPersistedConfig } from './wizard.js';
 import { FeedServer } from '@slice/feed';
 import type { OnboardingState } from '@slice/feed';
 import { SlicePiProvider, AgentSpawner } from '@slice/pi-bridge';
@@ -24,15 +24,11 @@ async function main() {
   // 2. Ensure data directory exists
   fs.mkdirSync(config.dataDir, { recursive: true });
 
-  // 3. Check if first run (config.json doesn't exist in dataDir)
-  const configPath = path.join(config.dataDir, 'config.json');
-  const isFirstRun = !fs.existsSync(configPath);
-
-  // 4. Initialize provider and spawner
+  // 3. Initialize provider and spawner
   const provider = new SlicePiProvider({ openrouterApiKey: config.openrouterApiKey });
   const spawner = new AgentSpawner(provider);
 
-  // 5. Initialize SQLite persistence
+  // 4. Initialize SQLite persistence
   let db: ReturnType<typeof createStorage> | null = null;
   try {
     const dbPath = path.join(config.dataDir, 'slice.db');
@@ -45,12 +41,28 @@ async function main() {
     db = null;
   }
 
-  // 5b. Initialize task queue and dispatch daemon (with optional persistence)
+  // 4b. Initialize Quarry API (uses same SQLite backend)
+  const quarryApi = db ? createQuarryAPI(db as unknown as StorageBackend) : undefined;
+
+  // 5. First-run detection: check Quarry for director entity
+  //    Falls back to config.json check if Quarry is not available
+  let needsWizard: boolean;
+  if (quarryApi) {
+    needsWizard = await isFirstRun(quarryApi);
+  } else {
+    const configPath = path.join(config.dataDir, 'config.json');
+    needsWizard = !fs.existsSync(configPath);
+  }
+
+  // 5b. Load persisted config from previous run (if any)
+  const persistedConfig = loadPersistedConfig(config.dataDir);
+
+  // 6. Initialize task queue and dispatch daemon (with optional persistence)
   const taskQueue = new TaskQueue(db ?? undefined);
 
-  // 6. Determine onboarding state and start feed server
+  // 7. Determine onboarding state and start feed server
   let onboardingState: OnboardingState | null = null;
-  if (isFirstRun) {
+  if (needsWizard) {
     onboardingState = getInitialState();
     onboardingState.selectedModels = {
       director: config.directorModel,
@@ -59,13 +71,10 @@ async function main() {
     };
   }
 
-  // Initialize Quarry API for feed persistence (uses same SQLite backend)
-  const quarryApi = db ? createQuarryAPI(db as unknown as StorageBackend) : undefined;
-
   const feed = new FeedServer(config.port, { onboardingState, provider, taskQueue, db: db ?? undefined, quarryApi });
   await feed.start();
 
-  // 7. Create dispatch daemon with feed integration
+  // 8. Create dispatch daemon with feed integration
   const daemon = new DispatchDaemon(taskQueue, spawner, {
     maxWorkers: config.maxWorkers,
     pollIntervalMs: 5000,
@@ -93,28 +102,36 @@ async function main() {
     },
   });
 
-  // 8. Run wizard if first run (feed is available for welcome posts)
-  if (isFirstRun) {
-    const wizardResult = await runSetupWizard(config, feed);
-    fs.writeFileSync(configPath, JSON.stringify(wizardResult, null, 2));
-    console.log('Setup complete. Configuration saved.');
+  // 9. Run wizard if first run (feed + quarryApi are available)
+  if (needsWizard && quarryApi) {
+    const wizardResult = await runSetupWizard({ config, quarryApi, feed });
+    console.log(`Setup complete. Director: ${wizardResult.directorEntityId}`);
+  } else if (needsWizard && !quarryApi) {
+    console.warn('⚠ First run detected but no database available. Wizard skipped.');
+  } else {
+    // Second+ boot — read persisted config
+    if (persistedConfig) {
+      console.log(`Config loaded from ${path.join(config.dataDir, 'config.json')}`);
+      console.log(`  Director entity: ${persistedConfig.directorEntityId}`);
+      console.log(`  Channels: ${persistedConfig.channels.join(', ')}`);
+    }
   }
 
-  // 8b. Scan the repo we're in and generate a report
+  // 9b. Scan the repo we're in and generate a report
   const repoInfo = await scanRepo(process.cwd());
-  if (repoInfo && isFirstRun) {
+  if (repoInfo && needsWizard) {
     await generateRepoReport(feed, repoInfo);
     console.log(`Scanned repo: ${repoInfo.name} (${repoInfo.fileCount} files)`);
   }
 
-  // 8c. Seed demo data if requested or first run
-  if (config.seedDemo || isFirstRun) {
+  // 9c. Seed demo data if requested or first run
+  if (config.seedDemo || needsWizard) {
     const { seedDemoData } = await import('./seed.js');
     await seedDemoData(feed);
     console.log('Demo data seeded.');
   }
 
-  // 9. Start peer bridge for multi-workspace federation
+  // 10. Start peer bridge for multi-workspace federation
   const bridge = new PeerBridge({
     workspaceName: repoInfo?.name || 'slice',
     workspacePort: config.port,
@@ -130,10 +147,10 @@ async function main() {
   });
   await bridge.start();
 
-  // 10. Start the dispatch daemon
+  // 11. Start the dispatch daemon
   daemon.start();
 
-  // 11. Post startup message
+  // 12. Post startup message
   feed.addPost({
     agentName: 'Slice',
     agentRole: 'system',
@@ -146,12 +163,12 @@ async function main() {
   console.log(`Auth token: ${config.authToken}`);
   console.log('');
 
-  // 12. Session cleanup interval (remove stale sessions every hour)
+  // 13. Session cleanup interval (remove stale sessions every hour)
   const sessionCleanupInterval = setInterval(() => {
     console.log('[cleanup] Session cleanup tick');
   }, 60 * 60 * 1000);
 
-  // 13. Graceful shutdown
+  // 14. Graceful shutdown
   const shutdown = async () => {
     console.log('\nShutting down gracefully...');
     clearInterval(sessionCleanupInterval);
