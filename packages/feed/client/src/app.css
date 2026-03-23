@@ -2,21 +2,27 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #0a0a0a;
-  --surface: #141414;
-  --surface-hover: #1a1a1a;
-  --border: #222;
-  --text: #e4e4e7;
-  --text-dim: #71717a;
-  --text-faint: #3f3f46;
-  --accent: #3b82f6;
+  --bg: #1A0E04;
+  --surface: #2D1605;
+  --surface-hover: #3A1D08;
+  --border: #4A2508;
+  --text: #FDF6EC;
+  --text-dim: #C4A882;
+  --text-faint: #6B4D30;
+  --accent: #E8A849;
   --green: #10b981;
-  --amber: #f59e0b;
-  --red: #ef4444;
+  --amber: #E8A849;
+  --red: #D4423B;
   --purple: #8b5cf6;
+  --crust-gold: #E8A849;
+  --crust-dark: #A05A1B;
+  --cherry: #D4423B;
+  --filling-dark: #8B1A15;
+  --cream: #FDF6EC;
+  --tablecloth: #E85D4A;
   --radius: 12px;
-  --font: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --mono: "SF Mono", "Fira Code", "JetBrains Mono", Consolas, monospace;
+  --font: Georgia, "Times New Roman", serif;
+  --mono: "Courier New", Courier, monospace;
 }
 
 html, body {
@@ -48,7 +54,7 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(10, 10, 10, 0.85);
+  background: rgba(26, 14, 4, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -206,7 +212,7 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 /* Code blocks in content */
 .post-content pre code,
 .post-content pre .code-block {
-  background: #1e1e2e;
+  background: #2D1605;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 10px 12px;
@@ -716,7 +722,7 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 .tab-bar {
   display: flex;
   border-bottom: 1px solid var(--border);
-  background: rgba(10, 10, 10, 0.85);
+  background: rgba(26, 14, 4, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   position: sticky;
@@ -1071,7 +1077,7 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 
 /* === Part 1: Hint Bar === */
 .hint-bar {
-  background: #1E293B;
+  background: #4A2508;
   border-bottom: 1px solid var(--border);
 }
 
@@ -1232,7 +1238,7 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
   bottom: 100%;
   left: 16px;
   right: 16px;
-  background: #1E293B;
+  background: #4A2508;
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
@@ -1290,39 +1296,54 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
 }
 
 /* === Tab buttons (simplified) === */
-.tab { flex: 1; padding: 10px; background: none; border: none; color: #94A3B8; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
-.tab.active { color: #F8FAFC; border-bottom-color: #3B82F6; }
-.tab:hover { color: #F8FAFC; background: rgba(59,130,246,0.05); }
+.tab { flex: 1; padding: 10px; background: none; border: none; color: #C4A882; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab.active { color: #FDF6EC; border-bottom-color: #E8A849; }
+.tab:hover { color: #FDF6EC; background: rgba(59,130,246,0.05); }
 
 /* === DM extras === */
-.dm-subtitle { display: block; color: #94A3B8; font-size: 12px; }
+.dm-subtitle { display: block; color: #C4A882; font-size: 12px; }
 .dm-suggestions { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
 .avatar.small { width: 28px; height: 28px; font-size: 12px; }
 .dm-bubble.user { justify-content: flex-end; }
-.dm-bubble.agent .dm-bubble-content { background: #1E293B; color: #E2E8F0; border-bottom-left-radius: 4px; }
-.dm-bubble.user .dm-bubble-content { background: #3B82F6; color: white; border-bottom-right-radius: 4px; }
+.dm-bubble.agent .dm-bubble-content { background: #4A2508; color: #E2E8F0; border-bottom-left-radius: 4px; }
+.dm-bubble.user .dm-bubble-content { background: #D4423B; color: #FDF6EC; border-bottom-right-radius: 4px; }
 
 /* === Agent list extras === */
-.agents-list h2 { color: #F8FAFC; margin: 0 0 16px; font-size: 18px; padding: 20px 20px 0; }
+.agents-list h2 { color: #FDF6EC; margin: 0 0 16px; font-size: 18px; padding: 20px 20px 0; }
 .agent-info { flex: 1; }
-.agent-info strong { color: #F8FAFC; display: block; margin-bottom: 2px; }
-.agent-info p { color: #94A3B8; font-size: 12px; margin: 4px 0 0; }
-.agent-msg-btn { background: #3B82F6; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; }
+.agent-info strong { color: #FDF6EC; display: block; margin-bottom: 2px; }
+.agent-info p { color: #C4A882; font-size: 12px; margin: 4px 0 0; }
+.agent-msg-btn { background: #D4423B; color: #FDF6EC; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; white-space: nowrap; }
 .agent-msg-btn:hover { background: #2563EB; }
 
 /* === Task List === */
-.task-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #1E293B; }
+.task-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #4A2508; }
 .task-status { font-size: 16px; width: 24px; text-align: center; }
 .task-status-completed { color: #10B981; }
-.task-status-in_progress { color: #3B82F6; }
+.task-status-in_progress { color: #E8A849; }
 .task-status-failed { color: #EF4444; }
-.task-status-open { color: #94A3B8; }
+.task-status-open { color: #C4A882; }
 .task-status-assigned { color: #F59E0B; }
 .task-info { flex: 1; }
-.task-info strong { display: block; color: #F8FAFC; font-size: 14px; }
-.task-assignee { color: #94A3B8; font-size: 12px; }
+.task-info strong { display: block; color: #FDF6EC; font-size: 14px; }
+.task-assignee { color: #C4A882; font-size: 12px; }
 .status-item.clickable { cursor: pointer; transition: color 0.15s; }
-.status-item.clickable:hover { color: #3B82F6; }
+.status-item.clickable:hover { color: #E8A849; }
+
+/* === Footer === */
+.app-footer {
+  text-align: center;
+  padding: 20px 16px 32px;
+  border-top: 1px solid var(--border);
+}
+.powered-by-badge {
+  height: 36px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.powered-by-badge:hover {
+  opacity: 1;
+}
 
 /* === Hidden utility === */
 .hidden { display: none !important; }
@@ -1333,8 +1354,8 @@ pre { font-family: var(--mono); white-space: pre-wrap; word-break: break-word; m
   top: 0;
   left: 0;
   right: 0;
-  background: #F59E0B;
-  color: #000;
+  background: #E8A849;
+  color: #4A2508;
   text-align: center;
   padding: 4px;
   font-size: 12px;

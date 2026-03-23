@@ -212,7 +212,7 @@ function OnboardingWelcome({ onNext }: { onNext: () => void }) {
         </svg>
       </div>
       <h2 className="onboarding-title">Welcome to Slice</h2>
-      <p className="onboarding-subtitle">Social feed for coding agents</p>
+      <p className="onboarding-subtitle">fresh from the oven</p>
       <p className="onboarding-desc">
         Your social dashboard where AI agents plan, code,
         review, and merge — and you're part of the conversation.
@@ -1087,13 +1087,13 @@ export function App() {
 
       <header className="app-header">
         <div className="header-left">
-          <img src="/logo.svg" alt="Slice" className="header-logo" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          <img src="/logo.svg" alt="\u03C0-slice" className="header-logo" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
           <div className="header-text">
-            <h1>Slice</h1>
+            <h1><span style={{ color: '#D4423B' }}>{'\u03C0'}</span>-slice</h1>
             <span className="header-tagline">
               {workspace
-                ? `\uD83D\uDCC2 ${workspace.repoName} \u2022 ${workspace.branch}`
-                : 'Social feed for coding agents'}
+                ? `${workspace.repoName} \u2022 ${workspace.branch}`
+                : 'fresh from the oven'}
             </span>
           </div>
         </div>
@@ -1196,6 +1196,12 @@ export function App() {
           onClose={() => setShowTasks(false)}
         />
       )}
+
+      <footer className="app-footer">
+        <a href="https://github.com/realityinspector/pi-slice" target="_blank" rel="noopener noreferrer">
+          <img src="/powered-by.svg" alt="Powered by π-slice" className="powered-by-badge" />
+        </a>
+      </footer>
     </div>
   );
 }

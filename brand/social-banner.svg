@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <defs>
+    <radialGradient id="bgRad" cx="30%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#FDF6EC"/>
+      <stop offset="100%" stop-color="#F0E0C4"/>
+    </radialGradient>
+    <radialGradient id="spg" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#E8A849"/>
+      <stop offset="70%" stop-color="#C4782A"/>
+      <stop offset="100%" stop-color="#A05A1B"/>
+    </radialGradient>
+    <radialGradient id="sfg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#D4423B"/>
+      <stop offset="100%" stop-color="#8B1A15"/>
+    </radialGradient>
+    <pattern id="sCh" width="24" height="24" patternUnits="userSpaceOnUse">
+      <rect width="24" height="24" fill="#E85D4A"/>
+      <rect width="12" height="12" fill="#F2F0E8"/>
+      <rect x="12" y="12" width="12" height="12" fill="#F2F0E8"/>
+    </pattern>
+    <filter id="ss" x="-5%" y="-5%" width="115%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#00000030"/>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bgRad)"/>
+
+  <!-- Tablecloth strip at bottom -->
+  <rect x="0" y="530" width="1280" height="110" fill="url(#sCh)" opacity="0.4"/>
+  <rect x="0" y="530" width="1280" height="110" fill="#E85D4A11"/>
+
+  <!-- Decorative dots border -->
+  <g opacity="0.15" fill="#A05A1B">
+    <circle cx="20" cy="20" r="4"/><circle cx="50" cy="20" r="4"/><circle cx="80" cy="20" r="4"/>
+    <circle cx="110" cy="20" r="4"/><circle cx="140" cy="20" r="4"/><circle cx="170" cy="20" r="4"/>
+    <circle cx="200" cy="20" r="4"/><circle cx="230" cy="20" r="4"/><circle cx="260" cy="20" r="4"/>
+    <circle cx="290" cy="20" r="4"/><circle cx="320" cy="20" r="4"/><circle cx="350" cy="20" r="4"/>
+    <circle cx="380" cy="20" r="4"/><circle cx="410" cy="20" r="4"/><circle cx="440" cy="20" r="4"/>
+    <circle cx="470" cy="20" r="4"/><circle cx="500" cy="20" r="4"/><circle cx="530" cy="20" r="4"/>
+    <circle cx="560" cy="20" r="4"/><circle cx="590" cy="20" r="4"/><circle cx="620" cy="20" r="4"/>
+    <circle cx="650" cy="20" r="4"/><circle cx="680" cy="20" r="4"/><circle cx="710" cy="20" r="4"/>
+    <circle cx="740" cy="20" r="4"/><circle cx="770" cy="20" r="4"/><circle cx="800" cy="20" r="4"/>
+    <circle cx="830" cy="20" r="4"/><circle cx="860" cy="20" r="4"/><circle cx="890" cy="20" r="4"/>
+    <circle cx="920" cy="20" r="4"/><circle cx="950" cy="20" r="4"/><circle cx="980" cy="20" r="4"/>
+    <circle cx="1010" cy="20" r="4"/><circle cx="1040" cy="20" r="4"/><circle cx="1070" cy="20" r="4"/>
+    <circle cx="1100" cy="20" r="4"/><circle cx="1130" cy="20" r="4"/><circle cx="1160" cy="20" r="4"/>
+    <circle cx="1190" cy="20" r="4"/><circle cx="1220" cy="20" r="4"/><circle cx="1250" cy="20" r="4"/>
+  </g>
+
+  <!-- Big pie -->
+  <g transform="translate(350, 290)" filter="url(#ss)">
+    <!-- Plate -->
+    <ellipse cx="0" cy="40" rx="220" ry="55" fill="#F5F0E8" stroke="#C8BFB0" stroke-width="1"/>
+
+    <!-- Pie body -->
+    <path d="M0,0 L0,-180 A180,180 0 1,1 127,-127 Z" fill="url(#spg)"/>
+
+    <!-- Lattice hints -->
+    <g opacity="0.2" stroke="#8B5E1A" stroke-width="10" stroke-linecap="round">
+      <line x1="-140" y1="-80" x2="80" y2="120"/>
+      <line x1="-80" y1="-140" x2="140" y2="60"/>
+      <line x1="-20" y1="-170" x2="170" y2="0"/>
+      <line x1="100" y1="-130" x2="-130" y2="100"/>
+      <line x1="150" y1="-60" x2="-60" y2="150"/>
+      <line x1="170" y1="20" x2="0" y2="170"/>
+    </g>
+
+    <!-- Cut edges -->
+    <line x1="0" y1="0" x2="0" y2="-180" stroke="#D4423B" stroke-width="4"/>
+    <line x1="0" y1="0" x2="127" y2="-127" stroke="#D4423B" stroke-width="4"/>
+
+    <!-- Crimped edge -->
+    <g opacity="0.45" fill="#D4943A">
+      <circle cx="0" cy="-180" r="7"/><circle cx="-52" cy="-173" r="7"/>
+      <circle cx="-100" cy="-150" r="7"/><circle cx="-140" cy="-113" r="7"/>
+      <circle cx="-167" cy="-66" r="7"/><circle cx="-179" cy="-14" r="7"/>
+      <circle cx="-174" cy="40" r="7"/><circle cx="-153" cy="90" r="7"/>
+      <circle cx="-120" cy="132" r="7"/><circle cx="-76" cy="162" r="7"/>
+      <circle cx="-26" cy="178" r="7"/><circle cx="26" cy="178" r="7"/>
+      <circle cx="76" cy="162" r="7"/><circle cx="120" cy="132" r="7"/>
+      <circle cx="153" cy="90" r="7"/><circle cx="174" cy="40" r="7"/>
+      <circle cx="179" cy="-14" r="7"/><circle cx="167" cy="-66" r="7"/>
+    </g>
+
+    <!-- Pi symbol -->
+    <text x="-48" y="22" font-family="Georgia, 'Times New Roman', serif" font-size="100" font-weight="bold" fill="#6B3A0A" opacity="0.5">&#960;</text>
+  </g>
+
+  <!-- Floating slice -->
+  <g transform="translate(540, 130) rotate(20)" filter="url(#ss)">
+    <path d="M0,0 L0,-110 A110,110 0 0,1 77.8,-77.8 Z" fill="url(#spg)"/>
+    <path d="M0,0 L0,14 L0,-96 L0,-110 Z" fill="#A05A1B" opacity="0.5"/>
+    <path d="M0,0 L0,14 L77.8,-63.8 L77.8,-77.8 Z" fill="#8B5E1A" opacity="0.4"/>
+    <path d="M0,-4 L0,7 L77.8,-70.8 L77.8,-75.8 Z" fill="#D4423B" opacity="0.7"/>
+    <line x1="0" y1="0" x2="0" y2="-110" stroke="#D4423B" stroke-width="3"/>
+    <line x1="0" y1="0" x2="77.8" y2="-77.8" stroke="#D4423B" stroke-width="3"/>
+  </g>
+
+  <!-- Steam -->
+  <g opacity="0.2" fill="none" stroke="#C8BFB0" stroke-width="3" stroke-linecap="round">
+    <path d="M300,100 Q295,75 302,50 Q308,25 300,0">
+      <animate attributeName="d" dur="3s" repeatCount="indefinite" values="M300,100 Q295,75 302,50 Q308,25 300,0;M300,100 Q308,73 298,48 Q290,23 302,-2;M300,100 Q295,75 302,50 Q308,25 300,0"/>
+    </path>
+    <path d="M340,95 Q335,65 342,40 Q348,15 340,-10">
+      <animate attributeName="d" dur="3.7s" repeatCount="indefinite" values="M340,95 Q335,65 342,40 Q348,15 340,-10;M340,95 Q348,63 338,38 Q330,13 342,-12;M340,95 Q335,65 342,40 Q348,15 340,-10"/>
+    </path>
+    <path d="M380,102 Q375,78 382,55 Q388,32 380,8">
+      <animate attributeName="d" dur="4.2s" repeatCount="indefinite" values="M380,102 Q375,78 382,55 Q388,32 380,8;M380,102 Q388,76 378,53 Q370,30 382,6;M380,102 Q375,78 382,55 Q388,32 380,8"/>
+    </path>
+  </g>
+
+  <!-- Text block -->
+  <g transform="translate(820, 220)">
+    <text x="0" y="0" font-family="Georgia, 'Times New Roman', serif" font-size="96" font-weight="bold" fill="#4A2508" letter-spacing="2">
+      <tspan fill="#D4423B">&#960;</tspan><tspan>-slice</tspan>
+    </text>
+    <line x1="0" y1="20" x2="400" y2="20" stroke="#D4943A" stroke-width="2" opacity="0.5"/>
+    <text x="0" y="55" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#8B5E1A" letter-spacing="5" font-style="italic">FRESH FROM THE OVEN</text>
+
+    <!-- Tagline area -->
+    <text x="0" y="110" font-family="'Courier New', Courier, monospace" font-size="18" fill="#6B3A0A" opacity="0.7">$ pip install pi-slice</text>
+
+    <!-- Version badge inline -->
+    <rect x="0" y="130" width="100" height="26" rx="4" fill="#4A2508"/>
+    <text x="50" y="148" text-anchor="middle" font-family="'Courier New', monospace" font-size="12" fill="#FDF6EC">v0.1.0</text>
+    <rect x="110" y="130" width="130" height="26" rx="4" fill="#D4423B"/>
+    <text x="175" y="148" text-anchor="middle" font-family="'Courier New', monospace" font-size="12" fill="#FDF6EC">open source</text>
+  </g>
+
+  <!-- Fork icon (kitschy) -->
+  <g transform="translate(1180, 480) rotate(-20)" opacity="0.15">
+    <rect x="-4" y="-120" width="8" height="120" rx="3" fill="#4A2508"/>
+    <rect x="-20" y="-140" width="8" height="40" rx="3" fill="#4A2508"/>
+    <rect x="-4" y="-145" width="8" height="45" rx="3" fill="#4A2508"/>
+    <rect x="12" y="-140" width="8" height="40" rx="3" fill="#4A2508"/>
+  </g>
+</svg>
