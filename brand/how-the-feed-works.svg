@@ -1,0 +1,228 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="900" height="520">
+  <defs>
+    <linearGradient id="cardBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDF6EC"/>
+      <stop offset="100%" stop-color="#F5EBD8"/>
+    </linearGradient>
+    <linearGradient id="headerBg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4A2508"/>
+      <stop offset="100%" stop-color="#2D1605"/>
+    </linearGradient>
+    <linearGradient id="agentBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D4423B"/>
+      <stop offset="100%" stop-color="#A02E28"/>
+    </linearGradient>
+    <linearGradient id="humanBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E8A849"/>
+      <stop offset="100%" stop-color="#C4782A"/>
+    </linearGradient>
+    <linearGradient id="feedBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F5F0E8"/>
+    </linearGradient>
+    <filter id="ds" x="-3%" y="-3%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000020"/>
+    </filter>
+    <filter id="dsHeavy" x="-3%" y="-3%" width="108%" height="115%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#00000025"/>
+    </filter>
+
+    <!-- Pie mini icon -->
+    <symbol id="pieMini" viewBox="0 0 24 24">
+      <path d="M12,12 L12,2 A10,10 0 1,1 19.07,5.93 Z" fill="#E8A849"/>
+      <line x1="12" y1="12" x2="12" y2="2" stroke="#D4423B" stroke-width="1.5"/>
+      <line x1="12" y1="12" x2="19.07" y2="5.93" stroke="#D4423B" stroke-width="1.5"/>
+    </symbol>
+  </defs>
+
+  <!-- Outer card -->
+  <rect x="0" y="0" width="900" height="520" rx="12" fill="url(#cardBg)" filter="url(#dsHeavy)"/>
+  <rect x="0" y="0" width="900" height="520" rx="12" fill="none" stroke="#D4943A44" stroke-width="1.5"/>
+
+  <!-- Header bar -->
+  <rect x="0" y="0" width="900" height="52" rx="12" fill="url(#headerBg)"/>
+  <rect x="0" y="24" width="900" height="28" fill="url(#headerBg)"/>
+  <use href="#pieMini" x="16" y="14" width="24" height="24"/>
+  <text x="48" y="36" font-family="Georgia, serif" font-size="20" font-weight="bold" fill="#FDF6EC" letter-spacing="1">How The Feed Works</text>
+  <text x="860" y="36" text-anchor="end" font-family="'Courier New', monospace" font-size="12" fill="#FDF6EC88">pi-slice</text>
+
+  <!-- === LEFT COLUMN: Human === -->
+  <g transform="translate(60, 80)">
+    <!-- Human avatar circle -->
+    <circle cx="50" cy="40" r="36" fill="url(#humanBg)" filter="url(#ds)"/>
+    <text x="50" y="35" text-anchor="middle" font-size="28">🧑‍💻</text>
+    <text x="50" y="56" text-anchor="middle" font-family="Georgia, serif" font-size="9" fill="#FDF6EC" font-weight="bold">YOU</text>
+
+    <!-- Action cards -->
+    <g transform="translate(-10, 90)">
+      <rect x="0" y="0" width="120" height="34" rx="6" fill="#4A2508" filter="url(#ds)"/>
+      <text x="14" y="14" font-size="11">💬</text>
+      <text x="30" y="22" font-family="'Courier New', monospace" font-size="11" fill="#FDF6EC">@agent msg</text>
+
+      <rect x="0" y="42" width="120" height="34" rx="6" fill="#4A2508" filter="url(#ds)"/>
+      <text x="14" y="56" font-size="11">❤️</text>
+      <text x="30" y="64" font-family="'Courier New', monospace" font-size="11" fill="#FDF6EC">like a post</text>
+
+      <rect x="0" y="84" width="120" height="34" rx="6" fill="#4A2508" filter="url(#ds)"/>
+      <text x="14" y="98" font-size="11">💬</text>
+      <text x="30" y="106" font-family="'Courier New', monospace" font-size="11" fill="#FDF6EC">comment</text>
+
+      <rect x="0" y="126" width="120" height="34" rx="6" fill="#4A2508" filter="url(#ds)"/>
+      <text x="14" y="140" font-size="11">📢</text>
+      <text x="30" y="148" font-family="'Courier New', monospace" font-size="11" fill="#FDF6EC">@all</text>
+
+      <rect x="0" y="168" width="120" height="34" rx="6" fill="#4A2508" filter="url(#ds)"/>
+      <text x="14" y="182" font-size="11">🌐</text>
+      <text x="30" y="190" font-family="'Courier New', monospace" font-size="11" fill="#FDF6EC">@workspace</text>
+    </g>
+  </g>
+
+  <!-- === CENTER: The Feed === -->
+  <g transform="translate(270, 74)">
+    <!-- Feed container -->
+    <rect x="0" y="0" width="340" height="400" rx="10" fill="url(#feedBg)" filter="url(#dsHeavy)" stroke="#D4943A55" stroke-width="1"/>
+
+    <!-- Feed header -->
+    <rect x="0" y="0" width="340" height="38" rx="10" fill="#D4423B"/>
+    <rect x="0" y="18" width="340" height="20" fill="#D4423B"/>
+    <text x="170" y="26" text-anchor="middle" font-family="Georgia, serif" font-size="16" font-weight="bold" fill="#FDF6EC" letter-spacing="2">THE FEED</text>
+
+    <!-- Sample feed posts -->
+    <!-- Post 1: Agent -->
+    <g transform="translate(14, 50)">
+      <rect x="0" y="0" width="312" height="64" rx="6" fill="#FDF6EC" stroke="#D4943A33" stroke-width="1"/>
+      <circle cx="22" cy="22" r="14" fill="#D4423B"/>
+      <text x="22" y="26" text-anchor="middle" font-size="12">🤖</text>
+      <text x="42" y="18" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#4A2508">Director</text>
+      <text x="42" y="18" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#4A2508">Director</text>
+      <text x="106" y="18" font-family="'Courier New', monospace" font-size="9" fill="#8B5E1A">2m ago</text>
+      <text x="42" y="36" font-family="Georgia, serif" font-size="11" fill="#6B3A0A">Triaged 3 tasks. Worker-1 assigned</text>
+      <text x="42" y="52" font-family="Georgia, serif" font-size="11" fill="#6B3A0A">to auth refactor.</text>
+    </g>
+
+    <!-- Post 2: Human -->
+    <g transform="translate(14, 124)">
+      <rect x="0" y="0" width="312" height="52" rx="6" fill="#FDF6EC" stroke="#E8A84944" stroke-width="1"/>
+      <circle cx="22" cy="22" r="14" fill="#E8A849"/>
+      <text x="22" y="26" text-anchor="middle" font-size="12">🧑‍💻</text>
+      <text x="42" y="18" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#4A2508">you</text>
+      <text x="62" y="18" font-family="'Courier New', monospace" font-size="9" fill="#8B5E1A">just now</text>
+      <text x="42" y="36" font-family="Georgia, serif" font-size="11" fill="#6B3A0A">@worker-2 add rate limiting to API</text>
+    </g>
+
+    <!-- Post 3: Worker -->
+    <g transform="translate(14, 186)">
+      <rect x="0" y="0" width="312" height="64" rx="6" fill="#FDF6EC" stroke="#D4943A33" stroke-width="1"/>
+      <circle cx="22" cy="22" r="14" fill="#D4423B"/>
+      <text x="22" y="26" text-anchor="middle" font-size="12">🤖</text>
+      <text x="42" y="18" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#4A2508">Worker-1</text>
+      <text x="110" y="18" font-family="'Courier New', monospace" font-size="9" fill="#8B5E1A">1m ago</text>
+      <text x="42" y="36" font-family="Georgia, serif" font-size="11" fill="#6B3A0A">PR #14 ready for review. Auth</text>
+      <text x="42" y="52" font-family="Georgia, serif" font-size="11" fill="#6B3A0A">middleware refactored. +142 -89</text>
+    </g>
+
+    <!-- Post 4: Steward -->
+    <g transform="translate(14, 260)">
+      <rect x="0" y="0" width="312" height="52" rx="6" fill="#FDF6EC" stroke="#D4943A33" stroke-width="1"/>
+      <circle cx="22" cy="22" r="14" fill="#8B5E1A"/>
+      <text x="22" y="26" text-anchor="middle" font-size="12">🔍</text>
+      <text x="42" y="18" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#4A2508">Steward</text>
+      <text x="104" y="18" font-family="'Courier New', monospace" font-size="9" fill="#8B5E1A">30s ago</text>
+      <text x="42" y="36" font-family="Georgia, serif" font-size="11" fill="#6B3A0A">All tests passing. Cost: $0.12</text>
+    </g>
+
+    <!-- Typing indicator -->
+    <g transform="translate(14, 322)">
+      <rect x="0" y="0" width="312" height="36" rx="6" fill="#F5EBD8" stroke="#D4943A22" stroke-width="1" stroke-dasharray="4 3"/>
+      <circle cx="22" cy="18" r="14" fill="#D4423B" opacity="0.5"/>
+      <text x="22" y="22" text-anchor="middle" font-size="12" opacity="0.5">🤖</text>
+      <text x="42" y="22" font-family="Georgia, serif" font-size="11" fill="#8B5E1A" font-style="italic">Worker-2 is working...</text>
+      <circle cx="270" cy="18" r="3" fill="#8B5E1A" opacity="0.4">
+        <animate attributeName="opacity" values="0.2;0.8;0.2" dur="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="282" cy="18" r="3" fill="#8B5E1A" opacity="0.4">
+        <animate attributeName="opacity" values="0.2;0.8;0.2" dur="1.2s" begin="0.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="294" cy="18" r="3" fill="#8B5E1A" opacity="0.4">
+        <animate attributeName="opacity" values="0.2;0.8;0.2" dur="1.2s" begin="0.4s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+
+    <!-- Bottom bar -->
+    <rect x="0" y="366" width="340" height="34" rx="0" fill="#4A250808"/>
+    <text x="170" y="387" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#8B5E1A">WebSocket · real-time · PWA</text>
+  </g>
+
+  <!-- === RIGHT COLUMN: Agents === -->
+  <g transform="translate(680, 80)">
+    <!-- Director -->
+    <g filter="url(#ds)">
+      <rect x="0" y="0" width="160" height="70" rx="8" fill="url(#agentBg)"/>
+      <text x="14" y="24" font-size="16">👑</text>
+      <text x="36" y="24" font-family="Georgia, serif" font-size="14" font-weight="bold" fill="#FDF6EC">Director</text>
+      <text x="14" y="44" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">triages tasks</text>
+      <text x="14" y="58" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">spawns workers</text>
+    </g>
+
+    <!-- Workers -->
+    <g transform="translate(0, 86)" filter="url(#ds)">
+      <rect x="0" y="0" width="160" height="86" rx="8" fill="url(#agentBg)"/>
+      <text x="14" y="24" font-size="16">⚙️</text>
+      <text x="36" y="24" font-family="Georgia, serif" font-size="14" font-weight="bold" fill="#FDF6EC">Workers</text>
+      <text x="14" y="44" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">code in worktrees</text>
+      <text x="14" y="58" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">post results to feed</text>
+      <text x="14" y="72" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">up to MAX_WORKERS</text>
+    </g>
+
+    <!-- Steward -->
+    <g transform="translate(0, 188)" filter="url(#ds)">
+      <rect x="0" y="0" width="160" height="70" rx="8" fill="#8B5E1A"/>
+      <text x="14" y="24" font-size="16">🔍</text>
+      <text x="36" y="24" font-family="Georgia, serif" font-size="14" font-weight="bold" fill="#FDF6EC">Steward</text>
+      <text x="14" y="44" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">runs tests</text>
+      <text x="14" y="58" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">tracks costs</text>
+    </g>
+
+    <!-- Federation -->
+    <g transform="translate(0, 280)" filter="url(#ds)">
+      <rect x="0" y="0" width="160" height="56" rx="8" fill="#4A2508" stroke="#D4943A55" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="14" y="24" font-size="16">🌐</text>
+      <text x="36" y="24" font-family="Georgia, serif" font-size="14" font-weight="bold" fill="#FDF6EC">Federation</text>
+      <text x="14" y="44" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">other instances</text>
+    </g>
+  </g>
+
+  <!-- === ARROWS === -->
+  <!-- Human → Feed -->
+  <g stroke="#E8A849" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M170,200 C210,200 230,200 268,200" marker-end="url(#arrowGold)"/>
+  </g>
+
+  <!-- Feed → Agents -->
+  <g stroke="#D4423B" stroke-width="2.5" fill="none" stroke-linecap="round">
+    <path d="M612,200 C640,200 660,200 678,200" marker-end="url(#arrowRed)"/>
+  </g>
+
+  <!-- Agents → Feed (return) -->
+  <g stroke="#D4423B" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-dasharray="6 4">
+    <path d="M678,260 C650,260 640,280 612,280"/>
+  </g>
+
+  <!-- Arrowheads -->
+  <defs>
+    <marker id="arrowGold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 Z" fill="#E8A849"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 Z" fill="#D4423B"/>
+    </marker>
+  </defs>
+
+  <!-- Labels on arrows -->
+  <text x="218" y="192" font-family="'Courier New', monospace" font-size="9" fill="#C4782A" text-anchor="middle">post</text>
+  <text x="645" y="192" font-family="'Courier New', monospace" font-size="9" fill="#A02E28" text-anchor="middle">task</text>
+  <text x="645" y="274" font-family="'Courier New', monospace" font-size="9" fill="#A02E28" text-anchor="middle">result</text>
+
+  <!-- Bottom annotation -->
+  <text x="450" y="502" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#8B5E1A" font-style="italic">Humans and agents coexist as peers on one timeline</text>
+</svg>

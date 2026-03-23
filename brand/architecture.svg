@@ -1,0 +1,220 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="900" height="600">
+  <defs>
+    <linearGradient id="aBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDF6EC"/>
+      <stop offset="100%" stop-color="#F5EBD8"/>
+    </linearGradient>
+    <linearGradient id="aHeader" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4A2508"/>
+      <stop offset="100%" stop-color="#2D1605"/>
+    </linearGradient>
+    <linearGradient id="layerRed" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D4423B"/>
+      <stop offset="100%" stop-color="#A02E28"/>
+    </linearGradient>
+    <linearGradient id="layerGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E8A849"/>
+      <stop offset="100%" stop-color="#C4782A"/>
+    </linearGradient>
+    <linearGradient id="layerBrown" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6B3A0A"/>
+      <stop offset="100%" stop-color="#4A2508"/>
+    </linearGradient>
+    <linearGradient id="layerCream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F5F0E8"/>
+    </linearGradient>
+    <filter id="d2" x="-2%" y="-2%" width="106%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000018"/>
+    </filter>
+    <filter id="d3" x="-2%" y="-2%" width="106%" height="112%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#00000022"/>
+    </filter>
+    <marker id="aDown" viewBox="0 0 10 10" refX="5" refY="8" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 1 0 L 5 8 L 9 0 Z" fill="#8B5E1A"/>
+    </marker>
+    <marker id="aUp" viewBox="0 0 10 10" refX="5" refY="2" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 1 10 L 5 2 L 9 10 Z" fill="#8B5E1A"/>
+    </marker>
+
+    <!-- Pie icon symbol -->
+    <symbol id="pieMk" viewBox="0 0 24 24">
+      <path d="M12,12 L12,2 A10,10 0 1,1 19.07,5.93 Z" fill="#E8A849"/>
+      <line x1="12" y1="12" x2="12" y2="2" stroke="#D4423B" stroke-width="1.5"/>
+      <line x1="12" y1="12" x2="19.07" y2="5.93" stroke="#D4423B" stroke-width="1.5"/>
+    </symbol>
+  </defs>
+
+  <!-- Outer card -->
+  <rect x="0" y="0" width="900" height="600" rx="12" fill="url(#aBg)" filter="url(#d3)"/>
+  <rect x="0" y="0" width="900" height="600" rx="12" fill="none" stroke="#D4943A44" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="900" height="52" rx="12" fill="url(#aHeader)"/>
+  <rect x="0" y="24" width="900" height="28" fill="url(#aHeader)"/>
+  <use href="#pieMk" x="16" y="14" width="24" height="24"/>
+  <text x="48" y="36" font-family="Georgia, serif" font-size="20" font-weight="bold" fill="#FDF6EC" letter-spacing="1">Architecture</text>
+  <text x="860" y="36" text-anchor="end" font-family="'Courier New', monospace" font-size="12" fill="#FDF6EC88">pi-slice</text>
+
+  <!-- Container outline -->
+  <rect x="30" y="68" width="840" height="500" rx="10" fill="none" stroke="#4A250822" stroke-width="2" stroke-dasharray="8 4"/>
+  <text x="50" y="88" font-family="'Courier New', monospace" font-size="11" fill="#8B5E1A" opacity="0.6">DOCKER CONTAINER</text>
+
+  <!-- ====== LAYER 1: Pi Agents (top) ====== -->
+  <g transform="translate(60, 100)">
+    <!-- Agent boxes -->
+    <g filter="url(#d2)">
+      <rect x="0" y="0" width="150" height="80" rx="8" fill="url(#layerRed)"/>
+      <text x="16" y="24" font-size="18">👑</text>
+      <text x="38" y="24" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#FDF6EC">Director</text>
+      <text x="16" y="44" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECBB">claude-sonnet</text>
+      <text x="16" y="60" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECBB">via pi-ai</text>
+    </g>
+
+    <g filter="url(#d2)">
+      <rect x="170" y="0" width="150" height="80" rx="8" fill="url(#layerRed)"/>
+      <text x="186" y="24" font-size="18">⚙️</text>
+      <text x="208" y="24" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#FDF6EC">Worker 1</text>
+      <text x="186" y="44" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECBB">claude-sonnet</text>
+      <text x="186" y="60" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECBB">via pi-ai</text>
+    </g>
+
+    <g filter="url(#d2)">
+      <rect x="340" y="0" width="150" height="80" rx="8" fill="url(#layerRed)"/>
+      <text x="356" y="24" font-size="18">⚙️</text>
+      <text x="378" y="24" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#FDF6EC">Worker 2</text>
+      <text x="356" y="44" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECBB">claude-sonnet</text>
+      <text x="356" y="60" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECBB">git worktree</text>
+    </g>
+
+    <g filter="url(#d2)">
+      <rect x="510" y="0" width="150" height="80" rx="8" fill="#8B5E1A"/>
+      <text x="526" y="24" font-size="18">🔍</text>
+      <text x="548" y="24" font-family="Georgia, serif" font-size="13" font-weight="bold" fill="#FDF6EC">Steward</text>
+      <text x="526" y="44" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECBB">claude-haiku</text>
+      <text x="526" y="60" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECBB">via pi-ai</text>
+    </g>
+
+    <!-- "..." for more workers -->
+    <text x="690" y="45" font-family="Georgia, serif" font-size="24" fill="#8B5E1A" opacity="0.4">···</text>
+  </g>
+
+  <!-- Connector lines: Agents → Orchestration -->
+  <g stroke="#8B5E1A" stroke-width="1.5" opacity="0.4">
+    <line x1="135" y1="182" x2="135" y2="208" marker-end="url(#aDown)"/>
+    <line x1="305" y1="182" x2="305" y2="208" marker-end="url(#aDown)"/>
+    <line x1="475" y1="182" x2="475" y2="208" marker-end="url(#aDown)"/>
+    <line x1="645" y1="182" x2="645" y2="208" marker-end="url(#aDown)"/>
+  </g>
+
+  <!-- ====== LAYER 2: Orchestration ====== -->
+  <g transform="translate(60, 210)">
+    <rect x="0" y="0" width="760" height="70" rx="8" fill="url(#layerGold)" filter="url(#d2)"/>
+    <text x="20" y="26" font-family="Georgia, serif" font-size="15" font-weight="bold" fill="#4A2508">Orchestration Layer</text>
+
+    <!-- Sub-items as pills -->
+    <g transform="translate(20, 38)">
+      <rect x="0" y="0" width="140" height="22" rx="11" fill="#4A250833"/>
+      <text x="70" y="15" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#4A2508">Dispatch Daemon</text>
+
+      <rect x="152" y="0" width="145" height="22" rx="11" fill="#4A250833"/>
+      <text x="224" y="15" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#4A2508">Session Manager</text>
+
+      <rect x="309" y="0" width="155" height="22" rx="11" fill="#4A250833"/>
+      <text x="386" y="15" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#4A2508">Worktree Isolation</text>
+
+      <rect x="476" y="0" width="145" height="22" rx="11" fill="#4A250833"/>
+      <text x="548" y="15" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#4A2508">Rate Limit / Recovery</text>
+    </g>
+  </g>
+
+  <!-- Connector: Orch → Data -->
+  <line x1="440" y1="282" x2="440" y2="306" stroke="#8B5E1A" stroke-width="1.5" opacity="0.4" marker-end="url(#aDown)"/>
+
+  <!-- ====== LAYER 3: Data ====== -->
+  <g transform="translate(60, 308)">
+    <rect x="0" y="0" width="760" height="56" rx="8" fill="url(#layerBrown)" filter="url(#d2)"/>
+    <text x="20" y="24" font-family="Georgia, serif" font-size="15" font-weight="bold" fill="#FDF6EC">Quarry Data Layer</text>
+
+    <g transform="translate(20, 34)">
+      <rect x="0" y="0" width="85" height="18" rx="9" fill="#FDF6EC22"/>
+      <text x="42" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">SQLite</text>
+
+      <rect x="95" y="0" width="65" height="18" rx="9" fill="#FDF6EC22"/>
+      <text x="127" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">FTS5</text>
+
+      <rect x="170" y="0" width="105" height="18" rx="9" fill="#FDF6EC22"/>
+      <text x="222" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#FDF6ECCC">JSONL Sync</text>
+    </g>
+  </g>
+
+  <!-- Connector: Data → Feed Server -->
+  <line x1="440" y1="366" x2="440" y2="386" stroke="#8B5E1A" stroke-width="1.5" opacity="0.4" marker-end="url(#aDown)"/>
+
+  <!-- ====== LAYER 4: Feed Server ====== -->
+  <g transform="translate(60, 388)">
+    <rect x="0" y="0" width="370" height="56" rx="8" fill="url(#layerCream)" filter="url(#d2)" stroke="#D4943A55" stroke-width="1"/>
+    <text x="20" y="24" font-family="Georgia, serif" font-size="15" font-weight="bold" fill="#4A2508">Feed Server</text>
+
+    <g transform="translate(20, 34)">
+      <rect x="0" y="0" width="80" height="18" rx="9" fill="#D4423B22"/>
+      <text x="40" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#A02E28">Express</text>
+
+      <rect x="90" y="0" width="100" height="18" rx="9" fill="#D4423B22"/>
+      <text x="140" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#A02E28">WebSocket</text>
+
+      <rect x="200" y="0" width="80" height="18" rx="9" fill="#D4423B22"/>
+      <text x="240" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#A02E28">:8080</text>
+    </g>
+  </g>
+
+  <!-- ====== LAYER 4b: Feed Client ====== -->
+  <g transform="translate(450, 388)">
+    <rect x="0" y="0" width="370" height="56" rx="8" fill="url(#layerCream)" filter="url(#d2)" stroke="#E8A84955" stroke-width="1"/>
+    <text x="20" y="24" font-family="Georgia, serif" font-size="15" font-weight="bold" fill="#4A2508">Feed Client</text>
+
+    <g transform="translate(20, 34)">
+      <rect x="0" y="0" width="85" height="18" rx="9" fill="#E8A84922"/>
+      <text x="42" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#C4782A">React 19</text>
+
+      <rect x="95" y="0" width="65" height="18" rx="9" fill="#E8A84922"/>
+      <text x="127" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#C4782A">Vite</text>
+
+      <rect x="170" y="0" width="60" height="18" rx="9" fill="#E8A84922"/>
+      <text x="200" y="13" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#C4782A">PWA</text>
+    </g>
+  </g>
+
+  <!-- Arrow between server and client -->
+  <line x1="432" y1="416" x2="448" y2="416" stroke="#8B5E1A" stroke-width="1.5" opacity="0.4"/>
+  <line x1="448" y1="410" x2="448" y2="422" stroke="#8B5E1A" stroke-width="1.5" opacity="0.4"/>
+
+  <!-- ====== LAYER 5: Federation ====== -->
+  <g transform="translate(60, 460)">
+    <rect x="0" y="0" width="760" height="50" rx="8" fill="none" stroke="#4A250844" stroke-width="1.5" stroke-dasharray="6 4" filter="url(#d2)"/>
+    <rect x="0" y="0" width="760" height="50" rx="8" fill="#4A250808"/>
+    <text x="20" y="22" font-size="16">🌐</text>
+    <text x="42" y="22" font-family="Georgia, serif" font-size="15" font-weight="bold" fill="#4A2508" opacity="0.7">Federation Layer</text>
+    <text x="42" y="40" font-family="'Courier New', monospace" font-size="10" fill="#8B5E1A" opacity="0.6">WebSocket mesh between Slice instances · cross-team collaboration</text>
+  </g>
+
+  <!-- Connector: Feed Server → Federation -->
+  <line x1="245" y1="446" x2="245" y2="460" stroke="#8B5E1A" stroke-width="1.5" opacity="0.3" stroke-dasharray="4 3"/>
+
+  <!-- Right side annotation: OpenRouter -->
+  <g transform="translate(748, 100)">
+    <rect x="0" y="0" width="130" height="80" rx="8" fill="none" stroke="#D4423B55" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <rect x="0" y="0" width="130" height="80" rx="8" fill="#D4423B08"/>
+    <text x="65" y="24" text-anchor="middle" font-family="Georgia, serif" font-size="12" font-weight="bold" fill="#D4423B">OpenRouter</text>
+    <text x="65" y="42" text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#8B5E1A">1 API key</text>
+    <text x="65" y="56" text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#8B5E1A">all models</text>
+    <text x="65" y="70" text-anchor="middle" font-family="'Courier New', monospace" font-size="9" fill="#8B5E1A">cost tracking</text>
+  </g>
+
+  <!-- Arrow: OpenRouter → Agents -->
+  <line x1="748" y1="140" x2="728" y2="140" stroke="#D4423B" stroke-width="1.5" opacity="0.4" stroke-dasharray="4 3"/>
+
+  <!-- Bottom tagline -->
+  <text x="450" y="544" text-anchor="middle" font-family="Georgia, serif" font-size="13" fill="#8B5E1A" font-style="italic">One container. One env var. A whole team of agents.</text>
+  <text x="450" y="562" text-anchor="middle" font-family="'Courier New', monospace" font-size="10" fill="#8B5E1A88">docker run -e OPENROUTER_API_KEY=sk-... -p 8080:8080 ghcr.io/slice/slice</text>
+</svg>
