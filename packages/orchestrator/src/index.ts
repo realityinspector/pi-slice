@@ -27,4 +27,22 @@ export {
   type DaemonMetrics,
 } from './dispatch-daemon.js';
 
+export {
+  MonitorRunner,
+  type MonitorRunnerConfig,
+} from './monitor-runner.js';
+
+export type {
+  MonitorDefinition,
+  MonitorState,
+  MonitorContext,
+  CheckResult,
+  MonitorCheck,
+  MonitorSeverity,
+  MonitorType,
+  TriageAction,
+} from './monitor-types.js';
+
+export { BUILTIN_MONITORS } from './monitors/definitions.js';
+
 export const ORCHESTRATOR_VERSION = '0.1.0';

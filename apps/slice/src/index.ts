@@ -3,7 +3,7 @@ import { runSetupWizard, isFirstRun, loadPersistedConfig } from './wizard.js';
 import { FeedServer } from '@slice/feed';
 import type { OnboardingState } from '@slice/feed';
 import { SlicePiProvider, AgentSpawner } from '@slice/pi-bridge';
-import { TaskQueue, DispatchDaemon } from '@slice/orchestrator';
+import { TaskQueue, DispatchDaemon, MonitorRunner, BUILTIN_MONITORS } from '@slice/orchestrator';
 import type { Task } from '@slice/orchestrator';
 import { PeerBridge } from '@slice/federation';
 import { createStorage } from '@slice/storage';
@@ -86,7 +86,17 @@ async function main() {
     };
   }
 
-  const feed = new FeedServer(config.port, { onboardingState, provider, taskQueue, db: db ?? undefined, quarryApi });
+  let monitorRunner: MonitorRunner | null = null;
+
+  const feed = new FeedServer(config.port, {
+    onboardingState,
+    provider,
+    taskQueue,
+    db: db ?? undefined,
+    quarryApi,
+    getMonitorStates: () => monitorRunner?.getState() || [],
+    getMonitorDefinitions: () => monitorRunner?.getMonitors() || [],
+  });
   await feed.start();
 
   // 8. Create dispatch daemon with feed integration
@@ -166,6 +176,35 @@ async function main() {
   // 11. Start the dispatch daemon
   daemon.start();
 
+  // 11b. Start self-maintaining monitor system
+  monitorRunner = new MonitorRunner({
+    baseUrl: `http://localhost:${config.port}`,
+    db: db ?? null,
+    taskQueue,
+    config: {
+      brokerUrl: process.env.SLICE_BROKER_URL || '',
+      openrouterApiKey: config.openrouterApiKey ? 'set' : 'missing',
+    },
+    onAlert: (monitor, state, result) => {
+      console.warn(`[MONITOR ALERT] ${monitor.name}: ${result.message} (${state.consecutiveFailures} consecutive failures)`);
+      feed.addPost({
+        agentName: 'Monitor',
+        agentRole: 'system',
+        content: `[${monitor.severity.toUpperCase()}] ${monitor.name}: ${result.message}\n\nTriage: ${monitor.triage.prompt?.slice(0, 200) || 'Manual review needed.'}`,
+      });
+    },
+    onRecover: (monitor, state) => {
+      console.log(`[MONITOR RECOVERED] ${monitor.name} after ${state.consecutiveFailures} failures`);
+      feed.addPost({
+        agentName: 'Monitor',
+        agentRole: 'system',
+        content: `Recovered: ${monitor.name} — back to healthy after ${state.consecutiveFailures} consecutive failures.`,
+      });
+    },
+  });
+  monitorRunner.register(BUILTIN_MONITORS);
+  monitorRunner.start();
+
   // 12. Post startup message
   feed.addPost({
     agentName: 'Slice',
@@ -188,6 +227,7 @@ async function main() {
   const shutdown = async () => {
     console.log('\nShutting down gracefully...');
     clearInterval(sessionCleanupInterval);
+    monitorRunner?.stop();
     daemon.stop();
     await bridge.stop();
     await spawner.closeAll();

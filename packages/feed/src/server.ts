@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import type { TaskQueue, TaskStatus } from '@slice/orchestrator';
 import type { QuarryAPI } from '@slice/quarry/api';
 import { QuarryFeedStore } from './store.js';
-import type { FeedPost as QuarryFeedPost, FeedComment as QuarryFeedComment } from './store.js';
+// QuarryFeedStore types imported from store.js when Quarry integration is active
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +47,8 @@ export interface FeedServerOptions {
   taskQueue?: TaskQueue;
   db?: FeedDb;
   quarryApi?: QuarryAPI;
+  getMonitorStates?: () => unknown[];
+  getMonitorDefinitions?: () => unknown[];
 }
 
 const ONBOARDING_STEP_ORDER: OnboardingStep[] = [
@@ -125,12 +127,16 @@ export class FeedServer {
   public persistenceStatus: 'ok' | 'degraded' | 'none' = 'none';
   private broadcastSeq = 0;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private getMonitorStates: (() => unknown[]) | null = null;
+  private getMonitorDefinitions: (() => unknown[]) | null = null;
 
   constructor(private port: number, options?: FeedServerOptions) {
     this.onboardingState = options?.onboardingState ?? null;
     this.provider = options?.provider;
     this.taskQueue = options?.taskQueue ?? null;
     this.db = options?.db ?? null;
+    this.getMonitorStates = options?.getMonitorStates ?? null;
+    this.getMonitorDefinitions = options?.getMonitorDefinitions ?? null;
 
     // Initialize Quarry-backed store if API is provided
     if (options?.quarryApi) {
@@ -209,6 +215,23 @@ export class FeedServer {
           inProgress: this.taskQueue.listTasks('in_progress').length,
           completed: this.taskQueue.listTasks('completed').length,
         } : null,
+      });
+    });
+
+    app.get('/api/monitors', (_req, res) => {
+      const states = this.getMonitorStates?.() || [];
+      const definitions = this.getMonitorDefinitions?.() || [];
+      res.json({
+        monitors: (definitions as any[]).map((d: any, i: number) => ({
+          id: d.id,
+          name: d.name,
+          description: d.description,
+          severity: d.severity,
+          type: d.type,
+          schedule: d.schedule,
+          triage: { action: d.triage?.action, maxConsecutiveFailures: d.triage?.maxConsecutiveFailures },
+          state: (states as any[])[i] || null,
+        })),
       });
     });
 
