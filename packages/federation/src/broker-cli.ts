@@ -1,6 +1,6 @@
 import { PeerBroker } from './broker.js';
 
-const port = parseInt(process.env.SLICE_BROKER_PORT || '7899', 10);
+const port = parseInt(process.env.PORT || process.env.SLICE_BROKER_PORT || '7899', 10);
 const broker = new PeerBroker(port);
 
 broker.start();

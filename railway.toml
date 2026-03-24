@@ -1,3 +1,4 @@
+# Main app service
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "apps/slice/Dockerfile"
@@ -8,6 +9,18 @@ healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 
+# Federation broker service
+[service.pi-slice-broker.build]
+builder = "DOCKERFILE"
+dockerfilePath = "packages/federation/Dockerfile"
+
+[service.pi-slice-broker.deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Environment overrides
 [environments.staging.deploy]
 healthcheckTimeout = 30
 restartPolicyMaxRetries = 3
