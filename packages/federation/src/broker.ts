@@ -46,6 +46,7 @@ export class PeerBroker {
 
     switch (url.pathname) {
       case '/health':
+      case '/api/health':
         res.end(JSON.stringify({ status: 'ok', peers: this.peers.size }));
         break;
 
