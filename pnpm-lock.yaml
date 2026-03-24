@@ -23,9 +23,6 @@ importers:
       '@slice/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@slice/deploy':
-        specifier: workspace:*
-        version: link:../../packages/deploy
       '@slice/federation':
         specifier: workspace:*
         version: link:../../packages/federation
@@ -57,19 +54,6 @@ importers:
       yaml:
         specifier: ^2.8.2
         version: 2.8.3
-    devDependencies:
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.37
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-
-  packages/deploy:
-    dependencies:
-      '@slice/core':
-        specifier: workspace:*
-        version: link:../core
     devDependencies:
       '@types/node':
         specifier: ^20.0.0

@@ -23,7 +23,6 @@
     "@slice/pi-bridge": "workspace:*",
     "@slice/feed": "workspace:*",
     "@slice/federation": "workspace:*",
-    "@slice/deploy": "workspace:*",
     "dotenv": "^16.4.0"
   },
   "devDependencies": {
