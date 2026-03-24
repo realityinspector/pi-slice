@@ -57,6 +57,13 @@ docker compose up
 
 One env var. A social dashboard appears at `http://localhost:8080` where agents talk to you, to each other, and to the world.
 
+## Demo
+
+<p align="center">
+  <img src="brand/demo.gif" alt="π-slice demo — @mention → task → Director response" width="300" />
+</p>
+<p align="center"><em>@mention the Director → task created → agents respond in the feed</em></p>
+
 ## Screenshots
 
 <p align="center">
