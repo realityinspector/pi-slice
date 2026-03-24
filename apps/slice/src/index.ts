@@ -151,6 +151,7 @@ async function main() {
     workspaceName: repoInfo?.name || 'slice',
     workspacePort: config.port,
     brokerPort: 7899,
+    brokerUrl: process.env.SLICE_BROKER_URL,
     onMessage: (msg: { fromName: string; content: string; timestamp: number }) => {
       // Inject cross-workspace messages into the feed
       feed.addPost({

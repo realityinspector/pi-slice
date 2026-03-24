@@ -2,6 +2,7 @@ export interface PeerBridgeConfig {
   workspaceName: string;
   workspacePort: number;
   brokerPort: number;
+  brokerUrl?: string; // override for remote broker (e.g. Railway internal network)
   onMessage?: (msg: { fromName: string; content: string; timestamp: number }) => void;
 }
 
@@ -21,7 +22,7 @@ export class PeerBridge {
   private static readonly MAX_HEARTBEAT_INTERVAL = 60000;
 
   constructor(private config: PeerBridgeConfig) {
-    this.brokerUrl = `http://localhost:${config.brokerPort}`;
+    this.brokerUrl = config.brokerUrl || `http://localhost:${config.brokerPort}`;
   }
 
   async start(): Promise<void> {
