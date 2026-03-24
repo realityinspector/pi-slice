@@ -16,7 +16,6 @@ COPY packages/pi-bridge/package.json packages/pi-bridge/tsconfig.json ./packages
 COPY packages/feed/package.json packages/feed/tsconfig.json ./packages/feed/
 COPY packages/feed/client/package.json ./packages/feed/client/
 COPY packages/federation/package.json packages/federation/tsconfig.json ./packages/federation/
-COPY packages/deploy/package.json packages/deploy/tsconfig.json ./packages/deploy/
 COPY apps/slice/package.json apps/slice/tsconfig.json ./apps/slice/
 
 RUN pnpm install --no-frozen-lockfile

@@ -13,7 +13,6 @@
     { "path": "../../packages/orchestrator" },
     { "path": "../../packages/pi-bridge" },
     { "path": "../../packages/feed" },
-    { "path": "../../packages/federation" },
-    { "path": "../../packages/deploy" }
+    { "path": "../../packages/federation" }
   ]
 }
